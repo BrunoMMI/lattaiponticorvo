@@ -1,0 +1,30 @@
+---
+import Account from '../../layouts/Account.astro';
+import { loginCustomer, startCustomerSession } from '../../lib/customer-auth';
+import { tooMany } from '../../lib/ratelimit';
+
+export const prerender = false;
+if (Astro.locals.customer) return Astro.redirect('/account');
+let error = '';
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const email = String(f.get('email') ?? '').trim().toLowerCase(), password = String(f.get('password') ?? '');
+  if (tooMany(`clogin:${Astro.clientAddress}`, 10) || tooMany(`clogin:${email}`, 8)) error = 'Troppi tentativi. Riprova tra qualche minuto.';
+  else {
+    const c = await loginCustomer(email, password);
+    if (c) { await startCustomerSession(Astro.cookies, c.id); return Astro.redirect('/account'); }
+    error = 'Email o password non corretti.';
+  }
+}
+---
+<Account title="Accedi" narrow>
+  <form method="post" class="grid gap-4 rounded-[var(--radius-card)] bg-white p-6 shadow-soft">
+    <h1 class="text-3xl">Accedi</h1>
+    {error && <p role="alert" class="rounded-lg bg-bordeaux-50 p-3 text-sm text-bordeaux-700">{error}</p>}
+    <label class="grid gap-1 text-sm font-medium">Email<input name="email" type="email" required autocomplete="username" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+    <label class="grid gap-1 text-sm font-medium">Password<input name="password" type="password" required autocomplete="current-password" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+    <button class="btn btn-primary">Accedi</button>
+    <p class="text-sm text-center"><a class="underline" href="/account/registrati">Crea un account o recupera la password</a></p>
+  </form>
+  <p class="mt-4 text-sm text-ink-soft text-center">Non serve un account per acquistare: puoi ordinare anche come ospite.</p>
+</Account>

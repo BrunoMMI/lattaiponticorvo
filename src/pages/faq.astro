@@ -1,0 +1,31 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import { business as b } from '../lib/site';
+
+// Solo risposte che corrispondono a dati reali o a funzionamenti effettivi del sito. Da integrare con il titolare.
+const faqs = [
+  { q: 'Dove si trova il caseificio e quali sono gli orari?', a: `Siamo in ${b.address.street}, ${b.address.zip} ${b.address.city} (${b.address.province}). Siamo aperti ${b.hours.map((h) => `${h.label.toLowerCase()} ${h.value}`).join('; ')}.` },
+  { q: 'Dal 1968: chi siamo?', a: 'Lattai Ponticorvo nasce dall’esperienza di tre generazioni di mastri casari: nel 1968 nonno Antonino fondò il suo primo caseificio, oggi il progetto è portato avanti da Luca Ponticorvo e dal figlio Antonino.' },
+  { q: 'Posso consultare il menù del locale online?', a: 'Sì, il menù digitale è disponibile alla pagina /menu, anche tramite il QR code sui tavoli. I prezzi dipendono dal peso effettivo delle porzioni, quindi non sono indicati: per informazioni puoi rivolgerti al nostro personale.' },
+  { q: 'Fornite ristoranti, pizzerie e rivendite?', a: 'Sì. Distribuiamo prodotti caseari in Italia e all’estero grazie alla filiera del freddo: i prodotti sono abbattuti a −40 °C nello stesso giorno di produzione, con una shelf-life di 365 giorni. Sono possibili confezioni personalizzabili e progetti di co-marketing. Trovi i dettagli nella pagina Per le aziende.' },
+  { q: 'Come nasce la vostra mozzarella?', a: 'Il latte viene filtrato, stoccato in tank refrigerati e lavorato entro 24 ore con pastorizzazione a 72 °C. La coagulazione avviene a 36 °C con siero innesto naturale e caglio; dopo la rottura e la maturazione della cagliata, la filatura e la mozzatura si fanno a mano o a macchina. Poi salamoia e confezionamento. Il processo completo è nella pagina La produzione.' },
+  { q: 'Vendete anche prodotti di altri produttori?', a: 'Nel nostro punto vendita trovi, oltre ai nostri latticini, una selezione di prodotti scoperti viaggiando e scelti perché ci hanno conquistato. Le novità sono frequenti.' },
+  { q: 'Come acquisto online?', a: 'Aggiungi i prodotti al carrello, scegli il metodo di consegna e paga in sicurezza con carta o con gli altri metodi mostrati al checkout. Puoi acquistare anche senza creare un account.' },
+  { q: 'Come viene calcolato il prezzo dei prodotti venduti a peso?', a: 'Il prezzo è calcolato sul peso scelto. Per alcuni prodotti il peso reale può variare leggermente dopo la preparazione: in quel caso autorizziamo l’importo massimo e ti addebitiamo solo il peso effettivo, mai più di quanto autorizzato.' },
+  { q: 'Quali metodi di pagamento accettate?', a: 'I pagamenti sono gestiti da Stripe: i dati della tua carta non passano né vengono salvati sui nostri server. I metodi disponibili sono mostrati al checkout.' },
+  { q: 'Come trovo gli allergeni di un prodotto?', a: 'Ogni scheda prodotto indica gli allergeni presenti. Per il menù del locale chiedi sempre conferma al nostro personale.' },
+  { q: 'Quanto costa la spedizione e in quanto tempo arriva?', a: 'Costi, zone e tempi sono indicati nella pagina Spedizioni e consegne e dipendono dal metodo scelto.' },
+];
+const ld = [{ '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })) }];
+---
+<PageShell title="Domande frequenti" path="/faq" description="Risposte alle domande più frequenti su Lattai Ponticorvo: orari, ordini online, prodotti a peso, pagamenti, allergeni e spedizioni." jsonLd={ld}>
+  <div class="grid gap-3 not-prose">
+    {faqs.map((f) => (
+      <details class="rounded-[var(--radius-card)] bg-white px-4 pb-4 open:shadow-soft">
+        <summary class="cursor-pointer py-4 font-semibold">{f.q}</summary>
+        <p class="mt-2 text-ink-soft">{f.a}</p>
+      </details>
+    ))}
+  </div>
+  <p>Non hai trovato risposta? <a href="/contatti">Contattaci</a>.</p>
+</PageShell>

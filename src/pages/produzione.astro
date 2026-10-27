@@ -1,0 +1,66 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import Values from '../components/Values.astro';
+import Certifications from '../components/Certifications.astro';
+import FilmPlayer from '../components/FilmPlayer.astro';
+import { photoAttrs, pic, videos } from '../lib/site-media';
+
+// Il processo descritto dal vecchio sito, diviso in tappe. Le foto mostrano il vero laboratorio.
+const steps = [
+  { n: 1, t: 'Il latte', photo: pic('log-autobotte'), p: 'Dopo la raccolta, il latte arriva in caseificio, dove viene filtrato e stoccato nei tank refrigerati.' },
+  { n: 2, t: 'La pastorizzazione', photo: pic('prod-latte-controllo'), p: 'Entro 24 ore il latte viene lavorato, passando attraverso una delicata pastorizzazione a 72 °C. Viene analizzato per garantirne la qualità.' },
+  { n: 3, t: 'La coagulazione', photo: pic('prod-pannello'), p: 'Il latte è trasferito nei polivalenti per la coagulazione a 36 °C, dove viene arricchito con siero innesto naturale e caglio, dando vita alla cagliata.' },
+  { n: 4, t: 'La cagliata', photo: pic('prod-cassette'), p: 'Dopo circa un’ora la cagliata viene rotta e privata di una parte di siero, lasciando maturare il restante per tre ore.' },
+  { n: 5, t: 'Filatura e mozzatura', photo: pic('prod-vasca-mani'), p: 'Un attento saggio di filatura verifica il momento perfetto per la lavorazione successiva: la filatura e la mozzatura, che possono avvenire a mano o a macchina.' },
+  { n: 6, t: 'Salatura e confezionamento', photo: pic('prod-film-logo'), p: 'Infine la mozzarella viene immersa in salamoia per la salatura, confezionata con cura e preparata per la spedizione.' },
+  { n: 7, t: 'Dal caseificio alla tavola', photo: pic('log-bancali'), p: 'Pronta a raggiungere le tavole con tutta la sua bontà autentica, in Italia e all’estero grazie alla filiera del freddo.' },
+];
+const farm = [pic('bufale-1'), pic('bufale-3'), pic('bufale-6'), pic('bufale-2')];
+const hall = [pic('prod-laboratorio'), pic('prod-filatura'), pic('prod-mozzarelle-mano'), pic('prod-confezionate')];
+const cold = [pic('log-furgone'), pic('log-furgone-carico'), pic('log-bancale')];
+---
+<PageShell wide title="La produzione" path="/produzione" ogImage="/media/site/prod-vasca-mani.webp"
+  description="Come nasce la nostra mozzarella: dal latte delle bufale alla filatura a mano, fino alla filiera del freddo. Il laboratorio di Lattai Ponticorvo ad Alvignano (CE).">
+  <div class="mx-auto max-w-3xl">
+    <p class="font-display text-xl text-ink-soft">Il gusto del latte genuino</p>
+    <h2 class="!mt-2">Da sempre teniamo a cuore la cura dei nostri animali</h2>
+    <p>Facciamo in modo che il loro benessere venga prima di ogni cosa, affinché il loro latte abbia il gusto e il profumo del latte di una volta. Solo così siamo sicuri della genuinità dei nostri prodotti, che siano buoni per il palato e dalle ottime proprietà nutrizionali.</p>
+  </div>
+  <ul class="not-prose mt-8 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Foto dell'allevamento">
+    {farm.map((p) => <li><img {...photoAttrs(p, '(min-width: 768px) 25vw, 50vw')} loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover" /></li>)}
+  </ul>
+
+  <h2 class="mx-auto max-w-3xl">Come nasce la nostra mozzarella</h2>
+  <p class="mx-auto max-w-3xl">La nostra mozzarella nasce da un processo attento e rigoroso, che preserva tutta la freschezza e la qualità del latte.</p>
+  <ol class="not-prose mt-8 grid gap-10">
+    {steps.map((s, i) => (
+      <li class="grid items-center gap-6 md:grid-cols-2">
+        <img {...photoAttrs(s.photo, '(min-width: 768px) 560px, 100vw')} loading="lazy" decoding="async" class:list={['aspect-[3/2] w-full rounded-[var(--radius-card)] object-cover shadow-soft', i % 2 === 1 && 'md:order-last']} />
+        <div>
+          <p class="font-display text-5xl text-bordeaux-300" aria-hidden="true">{String(s.n).padStart(2, '0')}</p>
+          <h3 class="font-display text-2xl">{s.t}</h3>
+          <p class="mt-2 text-ink-soft">{s.p}</p>
+        </div>
+      </li>
+    ))}
+  </ol>
+
+  <h2 class="mx-auto max-w-3xl">Il laboratorio</h2>
+  <ul class="not-prose mt-4 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Foto del laboratorio">
+    {hall.map((p) => <li><img {...photoAttrs(p, '(min-width: 768px) 25vw, 50vw')} loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover" /></li>)}
+  </ul>
+
+  <div class="mx-auto mt-12 max-w-3xl">
+    <h2>Portiamo i nostri prodotti ovunque</h2>
+    <p>La nostra azienda distribuisce prodotti caseari su tutto il territorio nazionale ed internazionale, grazie alla collaudata filiera del freddo.</p>
+    <p>I prodotti vengono abbattuti a −40 °C nello stesso giorno di produzione, garantendo una shelf-life di 365 giorni. Grazie ai nostri trasporti refrigerati riusciamo ad accontentare i clienti più esigenti che desiderano ricevere i prodotti freschi in tempi brevi.</p>
+  </div>
+  <ul class="not-prose mt-6 grid gap-3 sm:grid-cols-3" aria-label="Foto della logistica">
+    {cold.map((p) => <li><img {...photoAttrs(p, '(min-width: 640px) 33vw, 100vw')} loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover" /></li>)}
+  </ul>
+
+  <div class="not-prose mt-12"><FilmPlayer src={videos.film.src} poster={videos.film.poster} title="Il nostro film: dalla stalla al caseificio, in 36 secondi" class="mx-auto max-w-4xl" /></div>
+  <div class="not-prose mt-12"><Values /></div>
+  <div class="not-prose mt-12"><Certifications /></div>
+  <p class="not-prose mt-10 flex flex-wrap justify-center gap-3"><a class="btn btn-primary" href="/shop">Scopri i prodotti</a><a class="btn btn-ghost" href="/per-le-aziende">Lavora con noi</a></p>
+</PageShell>

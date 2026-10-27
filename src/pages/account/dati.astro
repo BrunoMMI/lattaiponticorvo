@@ -1,0 +1,59 @@
+---
+import Account from '../../layouts/Account.astro';
+import { getDb } from '../../db';
+import { exportCustomerData, anonymizeCustomer } from '../../lib/gdpr';
+import { endCustomerSession } from '../../lib/customer-auth';
+import type { Db } from '../../lib/orders';
+import { eq } from 'drizzle-orm';
+import { schema } from '../../db';
+
+export const prerender = false;
+const c = Astro.locals.customer!;
+const db = (await getDb()) as unknown as Db;
+
+if (Astro.url.searchParams.get('esporta') === '1') {
+  const data = await exportCustomerData(db, c.id);
+  return new Response(JSON.stringify(data, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': 'attachment; filename="i-miei-dati-lattai-ponticorvo.json"', 'Cache-Control': 'no-store' } });
+}
+
+let flash = '', error = '';
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  if (f.get('act') === 'save') {
+    await db.update(schema.customers).set({ name: String(f.get('name') ?? '').trim().slice(0, 120), phone: String(f.get('phone') ?? '').trim().slice(0, 30) || null }).where(eq(schema.customers.id, c.id));
+    flash = 'Dati aggiornati.';
+  } else if (f.get('act') === 'delete') {
+    if (String(f.get('confirm') ?? '').trim().toUpperCase() !== 'ELIMINA') error = 'Per confermare scrivi ELIMINA.';
+    else {
+      await anonymizeCustomer(db, c.id);
+      await endCustomerSession(Astro.cookies);
+      return Astro.redirect('/?account=eliminato');
+    }
+  }
+}
+const [fresh] = await db.select().from(schema.customers).where(eq(schema.customers.id, c.id));
+const field = 'min-h-11 rounded-lg border border-line bg-white px-3 font-normal';
+---
+<Account title="I miei dati">
+  <h1 class="text-4xl">I miei dati</h1>
+  {flash && <p role="status" class="mt-4 rounded-lg bg-green-50 p-3 text-green-800">{flash}</p>}
+  {error && <p role="alert" class="mt-4 rounded-lg bg-bordeaux-50 p-3 text-bordeaux-700">{error}</p>}
+  <form method="post" class="mt-6 grid max-w-md gap-3 rounded-[var(--radius-card)] bg-white p-5">
+    <input type="hidden" name="act" value="save" />
+    <p class="text-sm text-ink-soft">Email: <strong>{fresh.email}</strong></p>
+    <label class="grid gap-1 text-sm font-medium">Nome<input class={field} name="name" value={fresh.name} maxlength="120" /></label>
+    <label class="grid gap-1 text-sm font-medium">Telefono<input class={field} name="phone" value={fresh.phone ?? ''} maxlength="30" /></label>
+    <button class="btn btn-primary justify-self-start">Salva</button>
+  </form>
+
+  <section class="mt-8 grid max-w-md gap-3 rounded-[var(--radius-card)] bg-white p-5" aria-labelledby="privacy">
+    <h2 id="privacy" class="text-xl">Privacy</h2>
+    <p class="text-sm text-ink-soft">Puoi scaricare una copia dei tuoi dati o chiederne la cancellazione. Per obblighi di legge conserviamo in forma anonima importi e righe degli ordini già effettuati.</p>
+    <a class="btn btn-ghost justify-self-start" href="/account/dati?esporta=1">Scarica i miei dati (JSON)</a>
+    <form method="post" class="grid gap-2 border-t border-line pt-3">
+      <input type="hidden" name="act" value="delete" />
+      <label class="grid gap-1 text-sm font-medium">Elimina il mio account — scrivi ELIMINA per confermare<input class={field} name="confirm" autocomplete="off" required /></label>
+      <button class="btn btn-ghost justify-self-start !text-bordeaux-700">Elimina account</button>
+    </form>
+  </section>
+</Account>

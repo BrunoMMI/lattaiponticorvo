@@ -1,0 +1,20 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import { business as b } from '../lib/site';
+---
+<PageShell title="Privacy Policy" path="/privacy" draftLegal description="Informativa sul trattamento dei dati personali di Lattai Ponticorvo S.r.l. ai sensi degli artt. 13-14 del Regolamento UE 2016/679 (GDPR).">
+  <h2>Titolare del trattamento</h2>
+  <p>{b.legalName}, {b.address.street}, {b.address.zip} {b.address.city} ({b.address.province}), P.IVA {b.vat}. Contatti: <a href={`mailto:${b.email}`}>{b.email}</a> · {b.phone}.</p>
+  <h2>Quali dati trattiamo e perché</h2>
+  <ul>
+    <li><strong>Acquisti online</strong>: nome, email, telefono, indirizzo di consegna e dettagli dell’ordine. Base giuridica: esecuzione del contratto. Conservazione: per la durata degli obblighi fiscali e contabili previsti dalla legge.</li>
+    <li><strong>Messaggi dal modulo contatti</strong>: nome, email e testo. Base giuridica: tua richiesta. Conservazione: il tempo necessario a risponderti.</li>
+    <li><strong>Pagamenti</strong>: sono gestiti da Stripe Payments Europe, Ltd. Non riceviamo né conserviamo i dati della tua carta; riceviamo solo l’esito del pagamento.</li>
+    <li><strong>Dati tecnici</strong>: log dei server e cookie tecnici necessari al funzionamento del sito (carrello e sicurezza). Vedi la <a href="/cookie">Cookie Policy</a>.</li>
+  </ul>
+  <h2>Destinatari</h2>
+  <p>I dati possono essere trattati, come responsabili del trattamento, da fornitori di hosting, servizi di pagamento (Stripe), invio email (Resend) e corrieri per la consegna. [Da completare con l’elenco aggiornato dei fornitori effettivamente utilizzati e i relativi trasferimenti extra-UE.]</p>
+  <h2>I tuoi diritti</h2>
+  <p>Puoi chiedere accesso, rettifica, cancellazione, limitazione, portabilità e opposizione scrivendo a <a href={`mailto:${b.email}`}>{b.email}</a>. Hai inoltre diritto di proporre reclamo al Garante per la protezione dei dati personali (garanteprivacy.it).</p>
+  <p class="text-sm text-ink-soft">[Da verificare con un consulente: eventuale DPO, tempi di conservazione, trasferimenti extra-UE, marketing e newsletter.]</p>
+</PageShell>

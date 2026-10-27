@@ -1,0 +1,168 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getDb, schema } from '../../../db';
+import { eq, sql, and } from 'drizzle-orm';
+import { getMenu, getMenuNotes } from '../../../lib/menu';
+import { saveImage, detachPhoto } from '../../../lib/uploads';
+import { audit } from '../../../lib/auth';
+import { slugify } from '../../../lib/slug';
+
+export const prerender = false;
+const user = Astro.locals.user!;
+const db = await getDb();
+const { items: T } = schema;
+let flash = '';
+let error = '';
+
+const text = (f: FormData, k: string, max = 500) => String(f.get(k) ?? '').trim().slice(0, max);
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = text(f, 'act');
+  const id = text(f, 'id', 40);
+  try {
+    if (act === 'create') {
+      const name = text(f, 'name', 160);
+      if (!name) throw new Error('Inserisci il nome del piatto.');
+      const [{ max }] = await db.select({ max: sql<number>`coalesce(max(menu_sort_order),-1)::int` }).from(T).where(eq(T.inMenu, true));
+      let slug = slugify(name);
+      const [dup] = await db.select({ id: T.id }).from(T).where(eq(T.slug, slug));
+      if (dup) slug += `-${Date.now().toString(36)}`;
+      const [it] = await db.insert(T).values({ name, slug, inMenu: true, published: false, menuSortOrder: max + 1, sellUnit: 'fixed_weight', variableWeight: true }).returning();
+      await audit(user.id, 'menu.create', 'item', it.id, { name });
+      flash = 'Piatto creato (non ancora pubblicato).';
+    } else if (act === 'save') {
+      const allergens = text(f, 'allergens', 300).split(',').map((s) => s.trim()).filter(Boolean);
+      await db.update(T).set({
+        name: text(f, 'name', 160), shortDescription: text(f, 'description', 600), allergens,
+        published: f.has('published'), menuAvailable: f.has('available'), menuSpecial: f.has('special'), updatedAt: new Date(),
+      }).where(eq(T.id, id));
+      const file = f.get('photo');
+      if (file instanceof File && file.size > 0) {
+        const m = await saveImage(file, 'menu', text(f, 'name', 160));
+        const [{ n }] = await db.select({ n: sql<number>`coalesce(max(sort_order),-1)::int` }).from(schema.itemImages).where(eq(schema.itemImages.itemId, id));
+        await db.insert(schema.itemImages).values({ itemId: id, mediaId: m.id, sortOrder: n + 1 });
+      }
+      await audit(user.id, 'menu.update', 'item', id);
+      flash = 'Salvato.';
+    } else if (act === 'move') {
+      const dir = text(f, 'dir') === 'up' ? -1 : 1;
+      const list = await getMenu({ includeDraft: true });
+      const i = list.findIndex((x) => x.id === id), j = i + dir;
+      if (i >= 0 && j >= 0 && j < list.length) {
+        await db.transaction(async (tx) => {
+          // Rinumera tutto: robusto anche se ci sono valori duplicati.
+          const order = list.map((x) => x.id);
+          [order[i], order[j]] = [order[j], order[i]];
+          for (const [n, oid] of order.entries()) await tx.update(T).set({ menuSortOrder: n }).where(eq(T.id, oid));
+        });
+      }
+    } else if (act === 'cover') {
+      const mediaId = text(f, 'media', 40);
+      await db.transaction(async (tx) => {
+        await tx.update(schema.itemImages).set({ sortOrder: sql`sort_order + 1` }).where(eq(schema.itemImages.itemId, id));
+        await tx.update(schema.itemImages).set({ sortOrder: 0 }).where(and(eq(schema.itemImages.itemId, id), eq(schema.itemImages.mediaId, mediaId)));
+      });
+    } else if (act === 'delphoto') {
+      const mediaId = text(f, 'media', 40);
+      await detachPhoto(id, mediaId);
+      await audit(user.id, 'menu.photo.delete', 'item', id);
+    } else if (act === 'archive') {
+      // Non si cancella: il piatto viene archiviato, così lo storico resta integro.
+      await db.update(T).set({ archivedAt: new Date(), published: false }).where(eq(T.id, id));
+      await audit(user.id, 'menu.archive', 'item', id);
+      flash = 'Piatto rimosso dal menù.';
+    } else if (act === 'notes') {
+      const value = { headline: text(f, 'headline', 200), footnote: text(f, 'footnote', 600) };
+      await db.insert(schema.settings).values({ key: 'menu.notes', value }).onConflictDoUpdate({ target: schema.settings.key, set: { value, updatedAt: new Date() } });
+      await audit(user.id, 'menu.notes');
+      flash = 'Note sui prezzi aggiornate.';
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Operazione non riuscita.';
+  }
+}
+
+const list = await getMenu({ includeDraft: true });
+const notes = await getMenuNotes();
+const field = 'min-h-11 rounded-lg border border-line px-3 font-normal w-full';
+---
+<Admin title="Menù digitale">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h1 class="text-3xl">Menù digitale</h1>
+    <div class="flex flex-wrap gap-2">
+      <a class="btn btn-ghost" href="/menu?preview=1" target="_blank" rel="noopener">Anteprima</a>
+      <a class="btn btn-ghost" href="/admin/menu/qr?format=png">QR (PNG)</a>
+      <a class="btn btn-ghost" href="/admin/menu/qr?format=svg">QR (SVG)</a>
+    </div>
+  </div>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+
+  <section class="bg-white rounded-[var(--radius-card)] p-5 mb-6 grid gap-3 max-w-3xl">
+    <h2 class="text-xl">Note sui prezzi</h2>
+    <form method="post" class="grid gap-3">
+      <input type="hidden" name="act" value="notes" />
+      <label class="grid gap-1 text-sm font-medium">Messaggio in evidenza<input class={field} name="headline" value={notes.headline} required /></label>
+      <label class="grid gap-1 text-sm font-medium">Nota informativa<textarea class={field + ' py-2'} name="footnote" rows="3" required>{notes.footnote}</textarea></label>
+      <button class="btn btn-primary justify-self-start">Salva note</button>
+    </form>
+  </section>
+
+  <section class="bg-white rounded-[var(--radius-card)] p-5 mb-6 max-w-3xl">
+    <h2 class="text-xl mb-3">Nuovo piatto</h2>
+    <form method="post" class="flex gap-2 flex-wrap">
+      <input type="hidden" name="act" value="create" />
+      <label class="grow"><span class="sr-only">Nome del piatto</span><input class={field} name="name" placeholder="Nome del piatto" required /></label>
+      <button class="btn btn-primary">Aggiungi</button>
+    </form>
+  </section>
+
+  <ul class="grid gap-4 max-w-3xl">
+    {list.map((it, i) => (
+      <li class="bg-white rounded-[var(--radius-card)] p-5">
+        <form method="post" enctype="multipart/form-data" class="grid gap-3">
+          <input type="hidden" name="id" value={it.id} />
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-sm text-ink-soft">#{i + 1} {!it.published && <strong class="text-bordeaux-600">· bozza</strong>}</span>
+            <span class="flex gap-1">
+              <button class="btn btn-ghost !min-h-9 !px-3" name="act" value="move" onclick={`this.form.dir.value='up'`} disabled={i === 0} aria-label="Sposta su">↑</button>
+              <button class="btn btn-ghost !min-h-9 !px-3" name="act" value="move" onclick={`this.form.dir.value='down'`} disabled={i === list.length - 1} aria-label="Sposta giù">↓</button>
+              <input type="hidden" name="dir" value="" />
+            </span>
+          </div>
+          <label class="grid gap-1 text-sm font-medium">Nome<input class={field} name="name" value={it.name} required /></label>
+          <label class="grid gap-1 text-sm font-medium">Descrizione<textarea class={field + ' py-2'} name="description" rows="2">{it.shortDescription}</textarea></label>
+          <label class="grid gap-1 text-sm font-medium">Allergeni (separati da virgola)<input class={field} name="allergens" value={it.allergens.join(', ')} placeholder="es. latte, glutine" /></label>
+          <div class="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <label class="flex items-center gap-2"><input type="checkbox" name="published" checked={it.published} /> Pubblicato</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="available" checked={it.menuAvailable} /> Disponibile</label>
+            <label class="flex items-center gap-2"><input type="checkbox" name="special" checked={it.menuSpecial} /> Specialità</label>
+          </div>
+          {it.images.length > 0 && <ul class="flex flex-wrap gap-2">
+            {it.images.map((im, n) => <li class="relative"><img src={`/media/${im.path}`} alt={im.alt} width="96" height="96" class="size-24 object-cover rounded-lg" loading="lazy" />
+              {n === 0 && <span class="absolute left-1 top-1 bg-bordeaux-600 text-white text-[10px] px-1.5 rounded">copertina</span>}
+              <span class="flex gap-1 mt-1">
+                {n > 0 && <button class="text-xs underline" name="act" value={`cover:${im.mediaId}`} formnovalidate>Copertina</button>}
+                <button class="text-xs underline text-bordeaux-700" name="act" value={`delphoto:${im.mediaId}`} formnovalidate>Elimina</button>
+              </span></li>)}
+          </ul>}
+          <label class="grid gap-1 text-sm font-medium">Aggiungi foto<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="text-sm font-normal" /></label>
+          <div class="flex flex-wrap gap-2">
+            <button class="btn btn-primary" name="act" value="save">Salva</button>
+            <button class="btn btn-ghost" name="act" value="archive" formnovalidate>Rimuovi dal menù</button>
+          </div>
+        </form>
+      </li>
+    ))}
+  </ul>
+  <script is:inline>
+    // I pulsanti "copertina"/"elimina foto" inviano act=cover:<id>; lo trasformiamo in due campi distinti.
+    document.addEventListener('submit', (e) => {
+      const b = e.submitter; if (!b || !b.value.includes(':')) return;
+      const [act, media] = b.value.split(':'); e.preventDefault();
+      const f = e.target, fd = new FormData(f); fd.set('act', act); fd.set('media', media);
+      fetch(location.href, { method: 'POST', body: fd }).then(() => location.reload());
+    });
+  </script>
+</Admin>

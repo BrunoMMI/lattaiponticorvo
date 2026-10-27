@@ -1,0 +1,31 @@
+---
+import { business as b } from '../lib/site';
+---
+<footer class="bg-ink text-latte mt-24">
+  <div class="container-x grid gap-10 py-14 md:grid-cols-3">
+    <div>
+      <a href="/" aria-label={`${b.name}, home`} class="inline-block rounded-2xl bg-latte p-3"><img src="/brand/logo.svg" alt={`${b.name}, casari dal 1968`} width="180" height="87" class="h-20 w-auto" loading="lazy" decoding="async" /></a>
+      <p class="mt-3 text-latte/70">{b.tagline}</p>
+      <p class="mt-4 text-sm text-latte/70">{b.legalName}<br />P.IVA {b.vat}</p>
+    </div>
+    <div>
+      <h2 class="font-display text-lg mb-3">Vieni a trovarci</h2>
+      <address class="not-italic text-latte/80">{b.address.street}<br />{b.address.zip} {b.address.city} ({b.address.province})</address>
+      <p class="mt-3 text-latte/80">{b.hours.map((h) => <span class="block">{h.label}: {h.value}</span>)}</p>
+      <p class="mt-3"><a class="underline" href={`tel:${b.phoneTel}`}>{b.phone}</a><br /><a class="underline" href={`mailto:${b.email}`}>{b.email}</a></p>
+    </div>
+    <div>
+      <h2 class="font-display text-lg mb-3">Seguici</h2>
+      <ul class="flex gap-4">
+        <li><a class="underline" href={b.social.instagram} rel="noopener" target="_blank">Instagram</a></li>
+        <li><a class="underline" href={b.social.facebook} rel="noopener" target="_blank">Facebook</a></li>
+        <li><a class="underline" href={b.social.tiktok} rel="noopener" target="_blank">TikTok</a></li>
+      </ul>
+      <ul class="mt-6 grid gap-1 text-sm text-latte/70">
+        <li><a href="/chi-siamo">Chi siamo</a></li><li><a href="/produzione">La produzione</a></li><li><a href="/punto-vendita">Il punto vendita</a></li><li><a href="/per-le-aziende">Per le aziende</a></li><li><a href="/faq">Domande frequenti</a></li><li><a href="/trasparenza">Trasparenza</a></li><li><a href="/privacy">Privacy Policy</a></li><li><a href="/cookie">Cookie Policy</a></li><li><button type="button" class="underline" data-open-consent>Preferenze cookie</button></li>
+        <li><a href="/termini">Termini e condizioni</a></li><li><a href="/spedizioni">Spedizioni e consegne</a></li><li><a href="/resi">Resi e rimborsi</a></li>
+      </ul>
+    </div>
+  </div>
+  <p class="text-center text-xs text-latte/50 pb-6">© {new Date().getFullYear()} {b.legalName}</p>
+</footer>

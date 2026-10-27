@@ -1,0 +1,23 @@
+---
+import Account from '../../layouts/Account.astro';
+import { desc, eq } from 'drizzle-orm';
+import { getDb, schema } from '../../db';
+import { euro } from '../../lib/pricing';
+import { STATUS_LABELS } from '../../lib/order-labels';
+
+export const prerender = false;
+const c = Astro.locals.customer!;
+const rows = await (await getDb()).select().from(schema.orders).where(eq(schema.orders.customerId, c.id)).orderBy(desc(schema.orders.createdAt));
+const visible = rows.filter((o) => o.status !== 'pending'); // gli ordini mai pagati non si mostrano
+---
+<Account title="I miei ordini">
+  <h1 class="text-4xl">Ciao{c.name ? `, ${c.name.split(' ')[0]}` : ''}</h1>
+  <h2 class="mt-8 text-2xl">I miei ordini</h2>
+  {visible.length === 0
+    ? <p class="mt-4 text-ink-soft">Non hai ancora ordini. <a class="underline" href="/shop">Scopri i prodotti</a></p>
+    : <ul class="mt-4 grid gap-3">{visible.map((o) => (
+      <li class="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] bg-white p-4">
+        <div><a class="font-semibold underline text-bordeaux-700" href={`/account/ordini/${o.id}`}>Ordine #{o.number}</a><p class="text-sm text-ink-soft">{o.createdAt.toLocaleDateString('it-IT', { dateStyle: 'long' })}</p></div>
+        <span class="rounded bg-crema px-2 py-1 text-sm">{STATUS_LABELS[o.status]}</span><strong>{euro(o.totalCents)}</strong>
+      </li>))}</ul>}
+</Account>

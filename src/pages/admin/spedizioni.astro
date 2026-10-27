@@ -1,0 +1,86 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { asc, eq } from 'drizzle-orm';
+import { audit } from '../../lib/auth';
+import { centsToInput, parseEuro } from '../../lib/format';
+
+export const prerender = false;
+const db = await getDb();
+const { shippingMethods: S } = schema;
+const user = Astro.locals.user!;
+let flash = '', error = '';
+const txt = (f: FormData, k: string, max = 200) => String(f.get(k) ?? '').trim().slice(0, max);
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = txt(f, 'act', 20), id = txt(f, 'id', 40);
+  try {
+    if (act === 'create' || act === 'save') {
+      const name = txt(f, 'name', 100);
+      if (!name) throw new Error('Dai un nome al metodo di consegna.');
+      const kind = txt(f, 'kind', 10) === 'pickup' ? 'pickup' : 'delivery';
+      const values = {
+        name, kind, priceCents: kind === 'pickup' ? 0 : (parseEuro(f.get('price')) ?? 0), freeOverCents: kind === 'pickup' ? null : parseEuro(f.get('freeOver')),
+        zones: txt(f, 'zones', 400).split(/[,;\s]+/).map((z) => z.trim().toUpperCase()).filter(Boolean),
+        etaText: txt(f, 'eta', 120) || null, active: f.has('active'), sortOrder: parseInt(txt(f, 'sort', 5), 10) || 0,
+      };
+      if (act === 'create') { const [m] = await db.insert(S).values(values).returning(); await audit(user.id, 'shipping.create', 'shipping', m.id); flash = 'Metodo aggiunto.'; }
+      else { await db.update(S).set(values).where(eq(S.id, id)); await audit(user.id, 'shipping.update', 'shipping', id); flash = 'Salvato.'; }
+    } else if (act === 'delete') {
+      const [used] = await db.select({ id: schema.orders.id }).from(schema.orders).where(eq(schema.orders.shippingMethodId, id)).limit(1);
+      if (used) { await db.update(S).set({ active: false }).where(eq(S.id, id)); flash = 'Il metodo è stato usato in alcuni ordini: è stato solo disattivato per non perdere lo storico.'; }
+      else { await db.delete(S).where(eq(S.id, id)); flash = 'Metodo eliminato.'; }
+      await audit(user.id, 'shipping.delete', 'shipping', id);
+    }
+  } catch (e) { error = e instanceof Error ? e.message : 'Operazione non riuscita.'; }
+}
+
+const methods = await db.select().from(S).orderBy(asc(S.sortOrder), asc(S.name));
+const field = 'min-h-11 rounded-lg border border-line px-3 bg-white font-normal w-full';
+const lbl = 'grid gap-1 text-sm font-medium';
+---
+<Admin title="Spedizioni">
+  <h1 class="text-3xl mb-2">Consegne e spedizioni</h1>
+  <p class="text-ink-soft mb-6 max-w-2xl">Qui decidi come i clienti possono ricevere gli ordini. Finché non attivi almeno un metodo, il checkout non è utilizzabile. Nessuna tariffa è precompilata: inserisci le tue.</p>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+
+  <ul class="grid gap-4 max-w-3xl">
+    {methods.map((m) => (
+      <li class="bg-white rounded-[var(--radius-card)] p-5">
+        <form method="post" class="grid gap-3 sm:grid-cols-2">
+          <input type="hidden" name="id" value={m.id} />
+          <label class={lbl}>Nome<input class={field} name="name" value={m.name} required /></label>
+          <label class={lbl}>Tipo<select class={field} name="kind"><option value="pickup" selected={m.kind === 'pickup'}>Ritiro in sede</option><option value="delivery" selected={m.kind === 'delivery'}>Consegna / spedizione</option></select></label>
+          {m.kind === 'delivery' && <>
+            <label class={lbl}>Costo (€)<input class={field} name="price" inputmode="decimal" value={centsToInput(m.priceCents)} /></label>
+            <label class={lbl}>Gratis sopra (€) — facoltativo<input class={field} name="freeOver" inputmode="decimal" value={centsToInput(m.freeOverCents)} /></label>
+            <label class={lbl + ' sm:col-span-2'}>Province o CAP serviti (separati da virgola; vuoto = tutta Italia)<input class={field} name="zones" value={m.zones.join(', ')} placeholder="es. CE, NA, 81100" /></label>
+          </>}
+          <label class={lbl + ' sm:col-span-2'}>Tempi indicativi<input class={field} name="eta" value={m.etaText ?? ''} placeholder="es. 24–48 ore lavorative" /></label>
+          <div class="flex flex-wrap items-center gap-4 sm:col-span-2">
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="active" checked={m.active} /> Attivo</label>
+            <button class="btn btn-primary" name="act" value="save">Salva</button>
+            <button class="underline text-bordeaux-700 text-sm" name="act" value="delete" formnovalidate>Elimina</button>
+          </div>
+        </form>
+      </li>
+    ))}
+  </ul>
+
+  <section class="bg-white rounded-[var(--radius-card)] p-5 max-w-3xl mt-6">
+    <h2 class="text-xl mb-3">Aggiungi un metodo</h2>
+    <form method="post" class="grid gap-3 sm:grid-cols-2">
+      <input type="hidden" name="act" value="create" />
+      <label class={lbl}>Nome<input class={field} name="name" required placeholder="es. Ritiro in caseificio" /></label>
+      <label class={lbl}>Tipo<select class={field} name="kind"><option value="pickup">Ritiro in sede</option><option value="delivery">Consegna / spedizione</option></select></label>
+      <label class={lbl}>Costo (€) — solo consegna<input class={field} name="price" inputmode="decimal" /></label>
+      <label class={lbl}>Gratis sopra (€)<input class={field} name="freeOver" inputmode="decimal" /></label>
+      <label class={lbl + ' sm:col-span-2'}>Province o CAP serviti<input class={field} name="zones" /></label>
+      <label class={lbl + ' sm:col-span-2'}>Tempi indicativi<input class={field} name="eta" /></label>
+      <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="active" /> Attivo subito</label>
+      <button class="btn btn-primary justify-self-start">Aggiungi</button>
+    </form>
+  </section>
+</Admin>

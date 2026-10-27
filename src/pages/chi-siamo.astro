@@ -1,0 +1,21 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import { photos, photoAttrs } from '../lib/site-media';
+---
+<PageShell title="Chi siamo" path="/chi-siamo" pageType="AboutPage" description="La storia di Lattai Ponticorvo: tre generazioni di mastri casari, dal 1968, tra tradizione e lavorazione artigianale.">
+  <p class="text-ink-soft font-display text-xl">Eredi di un valore inestimabile: la tradizione casearia</p>
+  <img {...photoAttrs(photos.paretePiccola, '(min-width: 768px) 672px, 100vw')} loading="eager" class="w-full rounded-[var(--radius-card)] shadow-soft" />
+  <h2>L’amore per il latte è una tradizione di famiglia ereditata da nonno Antonino</h2>
+  <p>Originario di Piano di Sorrento, nel 1968 fondò il suo primo caseificio, ad Avignano, intraprendendo così l’arte di trasformare il latte in specialità casearie della sua terra.</p>
+  <p>Dall’esperienza di tre generazioni di mastri casari nasce “Lattai Ponticorvo”, un progetto di Luca Ponticorvo e di suo figlio Antonino.</p>
+  <blockquote class="border-l-4 border-bordeaux-600 pl-4 italic">
+    “Siamo gli eredi di questa magica alchimia che in pochi gesti crea dal latte formaggi profumati e nutrienti, buoni al palato e dalle ottime proprietà nutrizionali. Ogni giorno lavoriamo per migliorare i nostri latticini perfezionando le tecniche produttive, sempre nel rispetto della lavorazione artigianale e della genuinità delle materie prime.”
+  </blockquote>
+  <p>I gesti antichi tramandati nella famiglia Ponticorvo da tre generazioni sono il vero plus del progetto Lattai Ponticorvo.</p>
+  <p>Prodotti genuini, naturali, di alta qualità e fatti con amore da persone che aderiscono a valori etici.</p>
+  <h2>Mozzarella di Bufala Campana DOP</h2>
+  <p>La certificazione di Mozzarella di Bufala Campana regolamenta la produzione della mozzarella di bufala circoscritta alle 5 province della Campania e a diversi comuni ben delimitati in altre Regioni.</p>
+  <p>La denominazione di origine protetta viene attribuita agli alimenti le cui peculiari caratteristiche qualitative dipendono essenzialmente dal territorio.</p>
+  <p>La certificazione Halal è un requisito doganale imprescindibile per esportare soprattutto prodotti alimentari, in alcuni paesi islamici.</p>
+  <p class="pt-4"><a class="btn btn-primary !text-white !no-underline" href="/il-caseificio">Scopri il nostro caseificio</a> <a class="btn btn-ghost !no-underline" href="/shop">Vai allo shop</a></p>
+</PageShell>

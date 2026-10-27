@@ -1,0 +1,46 @@
+---
+import '../styles/global.css';
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/inter';
+interface Props { title: string; bare?: boolean }
+const { title, bare = false } = Astro.props;
+const user = Astro.locals.user;
+const nav = [
+  { href: '/admin', label: 'Panoramica' },
+  { href: '/admin/ordini', label: 'Ordini' },
+  { href: '/admin/clienti', label: 'Clienti' },
+  { href: '/admin/prodotti', label: 'Prodotti' },
+  { href: '/admin/categorie', label: 'Categorie' },
+  { href: '/admin/magazzino', label: 'Magazzino' },
+  { href: '/admin/spedizioni', label: 'Spedizioni' },
+  { href: '/admin/promozioni', label: 'Promozioni' },
+  { href: '/admin/contenuti', label: 'Contenuti sito' },
+  { href: '/admin/impostazioni', label: 'Impostazioni' },
+  { href: '/admin/utenti', label: 'Utenti' },
+  { href: '/admin/menu', label: 'Menù digitale' },
+  { href: '/admin/sicurezza', label: 'Sicurezza' },
+];
+import { roleAllows } from '../lib/permissions';
+const visible = user ? nav.filter((n) => n.href === '/admin' ? user.role !== 'staff' : roleAllows(user.role, n.href)) : nav;
+const isActive = (href: string) => (href === '/admin' ? Astro.url.pathname === href : Astro.url.pathname.startsWith(href));
+---
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" /><title>{title} · Admin Lattai Ponticorvo</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="bg-crema">
+    {bare ? <main id="main" class="min-h-screen grid place-items-center p-4"><slot /></main> : <div class="md:grid md:grid-cols-[15rem_1fr] min-h-screen">
+      <aside class="bg-white border-r border-line p-4 md:sticky md:top-0 md:h-screen">
+        <img src="/brand/logo.svg" alt="Lattai Ponticorvo" class="h-12 w-auto" />
+        <nav aria-label="Admin" class="mt-6 grid gap-1">
+          {visible.map((n) => <a href={n.href} aria-current={isActive(n.href) ? 'page' : undefined} class="px-3 py-2 rounded-lg hover:bg-bordeaux-50 aria-[current=page]:bg-bordeaux-100 aria-[current=page]:font-semibold">{n.label}</a>)}
+        </nav>
+        {user && <form method="post" action="/admin/logout" class="mt-8"><p class="text-xs text-ink-soft mb-2 break-all">{user.email}</p><button class="btn btn-ghost w-full">Esci</button></form>}
+      </aside>
+      <main class="p-4 md:p-8" id="main"><slot /></main>
+    </div>}
+  </body>
+</html>

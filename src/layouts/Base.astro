@@ -1,0 +1,62 @@
+---
+import '../styles/global.css';
+import '@fontsource-variable/fraunces';
+import '@fontsource-variable/inter';
+import { business, siteUrl } from '../lib/site';
+import ConsentBanner from '../components/ConsentBanner.astro';
+import { contentAll } from '../lib/settings';
+
+interface Props { title: string; description: string; noindex?: boolean; jsonLd?: object[]; ogImage?: string; ogImageAlt?: string; ogType?: 'website' | 'article' }
+const { title, description, noindex = false, jsonLd = [], ogImage, ogImageAlt, ogType = 'website' } = Astro.props;
+const cms = await contentAll().catch(() => null);
+const canonical = new URL(Astro.url.pathname, siteUrl).href;
+const shortTitle = title.length > 52 ? `${title.slice(0, 51).replace(/\s+\S*$/, '')}…` : title;
+const fullTitle = shortTitle.includes(business.name) ? shortTitle : `${shortTitle} | ${business.name}`;
+const ogTitle = title.includes(business.name) ? title : `${title} | ${business.name}`;
+// Le descrizioni per i motori di ricerca restano entro ~160 caratteri, tagliate a fine parola.
+const desc = description.length <= 160 ? description : `${description.slice(0, 157).replace(/\s+\S*$/, '')}…`;
+const image = ogImage ? (ogImage.startsWith('http') ? ogImage : `${siteUrl}${ogImage}`) : `${siteUrl}/media/site/e47a9792.webp`;
+const imageAlt = ogImageAlt ?? (ogImage ? title : 'Facciata del caseificio Lattai Ponticorvo');
+// "<" nel JSON-LD viene scritto come <: nessun contenuto può chiudere lo <script> in anticipo.
+const ld = (d: object) => JSON.stringify(d).replace(/</g, '\\u003c');
+---
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={desc} />
+    <meta name="theme-color" content="#820024" />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="it-IT" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    {noindex ? <meta name="robots" content="noindex,nofollow" /> : <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1" />}
+    <meta property="og:type" content={ogType} />
+    <meta property="og:locale" content="it_IT" />
+    <meta property="og:site_name" content={business.name} />
+    <meta property="og:title" content={ogTitle} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={image} />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={ogTitle} />
+    <meta name="twitter:description" content={desc} />
+    <meta name="twitter:image" content={image} />
+    {jsonLd.map((d) => <script type="application/ld+json" set:html={ld(d)} />)}
+  </head>
+  <body class="site">
+    <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:p-3 focus:rounded">Vai al contenuto</a>
+    {cms?.['banner.text'] && (
+      <p class="bg-bordeaux-600 px-4 py-2 text-center text-sm text-white">
+        {cms['banner.link'] ? <a class="underline" href={cms['banner.link']}>{cms['banner.text']}</a> : cms['banner.text']}
+      </p>
+    )}
+    <slot />
+    <ConsentBanner />
+  </body>
+</html>

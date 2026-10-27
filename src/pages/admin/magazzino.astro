@@ -1,0 +1,77 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { adjustStock, type Db } from '../../lib/orders';
+import { PricingError } from '../../lib/pricing';
+import { audit } from '../../lib/auth';
+import { formatStock, parseStock } from '../../lib/format';
+
+export const prerender = false;
+const db = await getDb();
+const { items: T, stockMovements: S } = schema;
+const user = Astro.locals.user!;
+let flash = '', error = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  try {
+    const itemId = String(f.get('item') ?? '');
+    const [it] = await db.select().from(T).where(eq(T.id, itemId));
+    if (!it) throw new Error('Seleziona un prodotto.');
+    const kind = String(f.get('kind'));
+    const qty = parseStock(f.get('qty'), it.sellUnit);
+    if (qty <= 0) throw new Error('Inserisci una quantità maggiore di zero.');
+    await adjustStock(db as unknown as Db, { itemId, delta: kind === 'unload' ? -qty : qty, reason: kind === 'unload' ? 'unload' : 'load', userId: user.id, note: String(f.get('note') ?? '').slice(0, 200) || undefined });
+    await audit(user.id, `stock.${kind}`, 'item', itemId, { qty });
+    flash = kind === 'unload' ? 'Scarico registrato.' : 'Carico registrato.';
+  } catch (e) {
+    error = e instanceof PricingError || e instanceof Error ? e.message : 'Operazione non riuscita.';
+  }
+}
+
+const products = await db.select().from(T).where(and(eq(T.inShop, true), isNull(T.archivedAt))).orderBy(asc(T.name));
+const moves = await db.select({ m: S, name: T.name, unit: T.sellUnit, who: schema.users.name })
+  .from(S).innerJoin(T, eq(T.id, S.itemId)).leftJoin(schema.users, eq(schema.users.id, S.userId)).orderBy(desc(S.createdAt)).limit(40);
+const low = products.filter((p) => p.lowStockThreshold > 0 && p.stockQty <= p.lowStockThreshold);
+const reasons: Record<string, string> = { load: 'Carico', unload: 'Scarico', sale: 'Vendita', refund: 'Rientro', adjustment: 'Rettifica' };
+const field = 'min-h-11 rounded-lg border border-line px-3 bg-white';
+---
+<Admin title="Magazzino">
+  <h1 class="text-3xl mb-6">Magazzino</h1>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+
+  {low.length > 0 && <aside class="bg-amber-50 border border-amber-200 rounded-[var(--radius-card)] p-4 mb-6" aria-label="Prodotti in esaurimento">
+    <h2 class="font-display text-lg">In esaurimento</h2>
+    <ul class="mt-1 text-sm">{low.map((p) => <li><a class="underline" href={`/admin/prodotti/${p.id}`}>{p.name}</a>: {formatStock(p.stockQty, p.sellUnit)} (soglia {formatStock(p.lowStockThreshold, p.sellUnit)})</li>)}</ul>
+  </aside>}
+
+  <form method="post" class="bg-white rounded-[var(--radius-card)] p-5 mb-6 grid gap-3 sm:grid-cols-[1fr_9rem_8rem] items-end max-w-4xl">
+    <h2 class="text-xl sm:col-span-3">Carico / scarico</h2>
+    <label class="grid gap-1 text-sm font-medium">Prodotto<select class={field + ' font-normal'} name="item" required><option value="">Seleziona…</option>{products.map((p) => <option value={p.id}>{p.name} ({formatStock(p.stockQty, p.sellUnit)})</option>)}</select></label>
+    <label class="grid gap-1 text-sm font-medium">Operazione<select class={field + ' font-normal'} name="kind"><option value="load">Carico (+)</option><option value="unload">Scarico (−)</option></select></label>
+    <label class="grid gap-1 text-sm font-medium">Quantità <span class="text-xs font-normal text-ink-soft">(kg o pezzi)</span><input class={field + ' font-normal'} name="qty" inputmode="decimal" required /></label>
+    <label class="grid gap-1 text-sm font-medium sm:col-span-2">Nota (facoltativa)<input class={field + ' font-normal'} name="note" maxlength="200" placeholder="es. produzione del mattino" /></label>
+    <button class="btn btn-primary">Registra</button>
+  </form>
+
+  <h2 class="text-xl mb-3">Giacenze</h2>
+  <div class="bg-white rounded-[var(--radius-card)] overflow-x-auto mb-8 max-w-4xl">
+    <table class="w-full text-sm"><caption class="sr-only">Giacenze attuali</caption>
+      <thead class="text-left text-ink-soft"><tr><th scope="col" class="p-3">Prodotto</th><th scope="col" class="p-3">Giacenza</th><th scope="col" class="p-3">Soglia</th></tr></thead>
+      <tbody>{products.length === 0 ? <tr><td class="p-3 text-ink-soft" colspan="3">Nessun prodotto.</td></tr> : products.map((p) => (
+        <tr class="border-t border-line"><td class="p-3"><a class="underline" href={`/admin/prodotti/${p.id}`}>{p.name}</a></td><td class="p-3">{formatStock(p.stockQty, p.sellUnit)}</td><td class="p-3">{p.lowStockThreshold ? formatStock(p.lowStockThreshold, p.sellUnit) : '—'}</td></tr>))}</tbody>
+    </table>
+  </div>
+
+  <h2 class="text-xl mb-3">Ultimi movimenti</h2>
+  <div class="bg-white rounded-[var(--radius-card)] overflow-x-auto max-w-4xl">
+    <table class="w-full text-sm"><caption class="sr-only">Storico movimenti</caption>
+      <thead class="text-left text-ink-soft"><tr><th scope="col" class="p-3">Data</th><th scope="col" class="p-3">Prodotto</th><th scope="col" class="p-3">Tipo</th><th scope="col" class="p-3">Variazione</th><th scope="col" class="p-3">Nota / utente</th></tr></thead>
+      <tbody>{moves.length === 0 ? <tr><td class="p-3 text-ink-soft" colspan="5">Nessun movimento.</td></tr> : moves.map(({ m, name, unit, who }) => (
+        <tr class="border-t border-line"><td class="p-3 whitespace-nowrap">{m.createdAt.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</td><td class="p-3">{name}</td><td class="p-3">{reasons[m.reason] ?? m.reason}</td>
+          <td class:list={['p-3 font-medium', m.delta < 0 ? 'text-bordeaux-700' : 'text-green-700']}>{m.delta > 0 ? '+' : ''}{formatStock(m.delta, unit)}</td><td class="p-3 text-ink-soft">{m.note ?? ''} {who ? `· ${who}` : ''}</td></tr>))}</tbody>
+    </table>
+  </div>
+</Admin>

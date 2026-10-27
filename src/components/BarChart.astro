@@ -1,0 +1,27 @@
+---
+interface Props { data: { label: string; value: number }[]; title: string; format: (v: number) => string; height?: number }
+const { data, title, format, height = 180 } = Astro.props;
+const W = 640, pad = { l: 8, r: 8, t: 12, b: 22 };
+const max = Math.max(1, ...data.map((d) => d.value));
+const bw = (W - pad.l - pad.r) / Math.max(data.length, 1);
+const every = Math.ceil(data.length / 8); // etichette dell'asse: al massimo ~8
+---
+<figure class="grid gap-2">
+  <svg viewBox={`0 0 ${W} ${height}`} role="img" aria-label={title} class="w-full h-auto" preserveAspectRatio="none">
+    <title>{title}</title>
+    <line x1={pad.l} x2={W - pad.r} y1={height - pad.b} y2={height - pad.b} stroke="#e6dccb" />
+    {data.map((d, i) => {
+      const h = Math.round(((height - pad.t - pad.b) * d.value) / max);
+      return (
+        <g>
+          <rect x={pad.l + i * bw + bw * 0.12} y={height - pad.b - h} width={bw * 0.76} height={Math.max(h, d.value > 0 ? 2 : 0)} rx="2" fill="#820024"><title>{`${d.label}: ${format(d.value)}`}</title></rect>
+          {i % every === 0 && <text x={pad.l + i * bw + bw / 2} y={height - 6} text-anchor="middle" font-size="10" fill="#5b5455">{d.label.slice(5)}</text>}
+        </g>
+      );
+    })}
+  </svg>
+  <details class="text-xs text-ink-soft"><summary class="cursor-pointer">Mostra i dati in tabella</summary>
+    <table class="mt-2 w-full"><caption class="sr-only">{title}</caption><thead><tr><th scope="col" class="text-left">Giorno</th><th scope="col" class="text-right">Valore</th></tr></thead>
+      <tbody>{data.filter((d) => d.value > 0).map((d) => <tr><td>{d.label}</td><td class="text-right">{format(d.value)}</td></tr>)}</tbody></table>
+  </details>
+</figure>

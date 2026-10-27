@@ -1,0 +1,172 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getDb, schema } from '../../../db';
+import { asc, eq } from 'drizzle-orm';
+import { audit } from '../../../lib/auth';
+import { applyActualWeights, euro, PricingError } from '../../../lib/pricing';
+import { cancelPaidOrder, type Db } from '../../../lib/orders';
+import { getStripe } from '../../../lib/stripe';
+import { parseEuro } from '../../../lib/format';
+import { PAYMENT_LABELS, STATUS_LABELS } from '../../../lib/order-labels';
+import { notifyOrder } from '../../../lib/email';
+
+export const prerender = false;
+const { id } = Astro.params;
+if (!id || !/^[0-9a-f-]{36}$/.test(id)) return new Response('Not found', { status: 404 });
+const db = await getDb();
+const { orders: O, orderLines: L, payments: P } = schema;
+const user = Astro.locals.user!;
+let flash = '', error = '';
+
+const load = async () => (await db.select().from(O).where(eq(O.id, id)))[0];
+let o = await load();
+if (!o) return new Response('Ordine non trovato', { status: 404 });
+
+const NEXT: Record<string, { to: 'preparing' | 'shipped' | 'delivered'; label: string }> = {
+  paid: { to: 'preparing', label: 'Metti in preparazione' },
+  preparing: { to: 'shipped', label: 'Segna come spedito' },
+  shipped: { to: 'delivered', label: 'Segna come consegnato' },
+};
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = String(f.get('act') ?? '');
+  try {
+    if (act === 'advance') {
+      const n = NEXT[o.status];
+      if (!n) throw new Error('Passaggio di stato non consentito.');
+      if (o.paymentStatus === 'authorized') throw new Error('Prima conferma i pesi reali e addebita l’importo.');
+      await db.update(O).set({ status: n.to, updatedAt: new Date() }).where(eq(O.id, id));
+      await audit(user.id, `order.${n.to}`, 'order', id);
+      if (n.to !== 'delivered') await notifyOrder(db as unknown as Db, id, n.to);
+      flash = 'Stato aggiornato.';
+    } else if (act === 'note') {
+      await db.update(O).set({ internalNote: String(f.get('note') ?? '').slice(0, 2000) || null, updatedAt: new Date() }).where(eq(O.id, id));
+      flash = 'Nota salvata.';
+    } else if (act === 'weights') {
+      if (o.paymentStatus !== 'authorized' || !o.stripePaymentIntentId || o.authorizedCents == null) throw new Error('Nessun importo da addebitare per questo ordine.');
+      const stripe = getStripe();
+      if (!stripe) throw new Error('Stripe non è configurato.');
+      const lines = await db.select().from(L).where(eq(L.orderId, id));
+      const actual: Record<string, number> = {};
+      for (const l of lines) { const v = parseInt(String(f.get(`w_${l.id}`) ?? ''), 10); if (Number.isFinite(v) && l.weightGrams) actual[l.id] = v; }
+      const calc = applyActualWeights(lines, actual, { discountCents: o.discountCents, shippingCents: o.shippingCents, authorizedCents: o.authorizedCents });
+      // Addebito: mai oltre l'importo autorizzato (controllato sopra e imposto da Stripe).
+      await stripe.paymentIntents.capture(o.stripePaymentIntentId, { amount_to_capture: calc.totalCents }, { idempotencyKey: `capture-${o.id}` });
+      await db.transaction(async (tx) => {
+        for (const cl of calc.lines) await tx.update(L).set({ lineTotalCents: cl.lineTotalCents, actualWeightGrams: cl.actualWeightGrams }).where(eq(L.id, cl.id));
+        await tx.update(O).set({ subtotalCents: calc.subtotalCents, totalCents: calc.totalCents, paymentStatus: 'succeeded', updatedAt: new Date() }).where(eq(O.id, id));
+        await tx.update(P).set({ amountCents: calc.totalCents, status: 'succeeded' }).where(eq(P.providerRef, o.stripePaymentIntentId!));
+      });
+      await audit(user.id, 'order.capture', 'order', id, { totalCents: calc.totalCents });
+      await notifyOrder(db as unknown as Db, id, 'captured');
+      flash = `Addebitati ${euro(calc.totalCents)}.`;
+    } else if (act === 'cancel') {
+      const stripe = getStripe();
+      if (o.paymentStatus === 'authorized' && o.stripePaymentIntentId) {
+        if (!stripe) throw new Error('Stripe non è configurato.');
+        await stripe.paymentIntents.cancel(o.stripePaymentIntentId); // rilascia l'autorizzazione: nessun addebito
+      } else if (o.paymentStatus === 'succeeded' && o.stripePaymentIntentId) {
+        if (!stripe) throw new Error('Stripe non è configurato.');
+        await stripe.refunds.create({ payment_intent: o.stripePaymentIntentId }, { idempotencyKey: `refund-full-${o.id}` });
+      }
+      if (!(await cancelPaidOrder(await db as unknown as Db, id, user.id))) throw new Error('L’ordine non può più essere annullato.');
+      await audit(user.id, 'order.cancel', 'order', id);
+      await notifyOrder(db as unknown as Db, id, 'cancelled');
+      flash = 'Ordine annullato e giacenze ripristinate.';
+    } else if (act === 'refund') {
+      const amount = parseEuro(f.get('amount'));
+      const stripe = getStripe();
+      if (!stripe || !o.stripePaymentIntentId) throw new Error('Rimborso non disponibile per questo ordine.');
+      if (o.paymentStatus !== 'succeeded' && o.paymentStatus !== 'partially_refunded') throw new Error('L’ordine non risulta pagato.');
+      const [pay] = await db.select().from(P).where(eq(P.providerRef, o.stripePaymentIntentId));
+      if (!amount || amount <= 0 || amount > o.totalCents) throw new Error('Importo di rimborso non valido.');
+      const r = await stripe.refunds.create({ payment_intent: o.stripePaymentIntentId, amount }, { idempotencyKey: `refund-${o.id}-${amount}-${Date.now() >> 14}` });
+      if (pay) await db.insert(schema.refunds).values({ paymentId: pay.id, amountCents: amount, reason: String(f.get('reason') ?? '').slice(0, 200) || null, providerRef: r.id });
+      await audit(user.id, 'order.refund', 'order', id, { amount });
+      await notifyOrder(db as unknown as Db, id, 'refunded');
+      flash = `Rimborso di ${euro(amount)} avviato. Lo stato si aggiorna alla conferma di Stripe.`;
+    }
+  } catch (e) {
+    error = e instanceof PricingError || e instanceof Error ? e.message : 'Operazione non riuscita.';
+  }
+  o = await load();
+}
+
+const lines = await db.select().from(L).where(eq(L.orderId, id)).orderBy(asc(L.nameSnapshot));
+const refunds = await db.select({ r: schema.refunds }).from(schema.refunds).innerJoin(P, eq(P.id, schema.refunds.paymentId)).where(eq(P.orderId, id));
+const [cust] = o.customerId ? await db.select().from(schema.customers).where(eq(schema.customers.id, o.customerId)) : [];
+const [ship] = o.shippingMethodId ? await db.select().from(schema.shippingMethods).where(eq(schema.shippingMethods.id, o.shippingMethodId)) : [];
+const addr = o.shippingAddress as { line1: string; city: string; zip: string; province: string } | null;
+const next = NEXT[o.status];
+const canCancel = ['paid', 'preparing'].includes(o.status);
+const field = 'min-h-11 rounded-lg border border-line px-3 bg-white';
+---
+<Admin title={`Ordine #${o.number}`}>
+  <p class="text-sm mb-2 print:hidden"><a class="underline" href="/admin/ordini">← Tutti gli ordini</a></p>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h1 class="text-3xl">Ordine #{o.number}</h1>
+    <button class="btn btn-ghost print:hidden" onclick="window.print()">Stampa riepilogo</button>
+  </div>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+
+  <div class="grid gap-6 max-w-4xl">
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-1 text-sm">
+      <p><strong>Stato:</strong> {STATUS_LABELS[o.status]} · <strong>Pagamento:</strong> {PAYMENT_LABELS[o.paymentStatus]}</p>
+      <p><strong>Data:</strong> {o.createdAt.toLocaleString('it-IT')}</p>
+      <p><strong>Cliente:</strong> {cust?.name || '—'} · <a class="underline" href={`mailto:${o.email}`}>{o.email}</a>{cust?.phone ? ` · ${cust.phone}` : ''}</p>
+      <p><strong>Consegna:</strong> {ship?.name ?? '—'}{addr ? ` — ${addr.line1}, ${addr.zip} ${addr.city} (${addr.province})` : ''}</p>
+      {o.couponCode && <p><strong>Codice sconto:</strong> {o.couponCode}</p>}
+    </section>
+
+    <form method="post" class="bg-white rounded-[var(--radius-card)] p-5 grid gap-3">
+      <h2 class="text-xl">Righe</h2>
+      <div class="overflow-x-auto"><table class="w-full text-sm"><caption class="sr-only">Prodotti dell'ordine</caption>
+        <thead class="text-left text-ink-soft"><tr><th scope="col" class="py-2">Prodotto</th><th scope="col">Q.tà</th><th scope="col">Peso richiesto</th><th scope="col">Peso reale</th><th scope="col" class="text-right">Totale</th></tr></thead>
+        <tbody>{lines.map((l) => (
+          <tr class="border-t border-line">
+            <td class="py-2">{l.nameSnapshot}</td><td>{l.weightGrams ? '' : l.quantity}</td><td>{l.weightGrams ? `${l.weightGrams} g` : '—'}</td>
+            <td>{o.paymentStatus === 'authorized' && l.weightGrams
+              ? <><label class="sr-only" for={`w_${l.id}`}>Peso reale in grammi</label><input id={`w_${l.id}`} name={`w_${l.id}`} type="number" min="1" placeholder="grammi" class={field + ' w-28'} /></>
+              : l.actualWeightGrams ? `${l.actualWeightGrams} g` : '—'}</td>
+            <td class="text-right">{euro(l.lineTotalCents)}</td>
+          </tr>))}</tbody>
+      </table></div>
+      <dl class="grid gap-1 text-sm justify-items-end">
+        <div>Subtotale: {euro(o.subtotalCents)}</div>
+        {o.discountCents > 0 && <div>Sconto: −{euro(o.discountCents)}</div>}
+        <div>Spedizione: {euro(o.shippingCents)}</div>
+        <div class="font-display text-lg">Totale: {euro(o.totalCents)}</div>
+      </dl>
+      {o.paymentStatus === 'authorized' && (
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm grid gap-2 print:hidden">
+          <p>Il cliente ha <strong>autorizzato fino a {euro(o.authorizedCents ?? o.totalCents)}</strong>. Inserisci il peso reale di ogni riga: verrà addebitato solo il peso effettivo, mai più dell’autorizzato.</p>
+          <button class="btn btn-primary justify-self-start" name="act" value="weights">Conferma pesi e addebita</button>
+        </div>
+      )}
+    </form>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-3 print:hidden">
+      <h2 class="text-xl">Gestione</h2>
+      <div class="flex flex-wrap gap-2">
+        {next && <form method="post"><input type="hidden" name="act" value="advance" /><button class="btn btn-primary">{next.label}</button></form>}
+        {canCancel && <form method="post"><input type="hidden" name="act" value="cancel" /><button class="btn btn-ghost">Annulla ordine{o.paymentStatus === 'succeeded' ? ' e rimborsa' : ''}</button></form>}
+      </div>
+      {(o.paymentStatus === 'succeeded' || o.paymentStatus === 'partially_refunded') && (
+        <form method="post" class="flex flex-wrap gap-2 items-end">
+          <input type="hidden" name="act" value="refund" />
+          <label class="grid gap-1 text-sm font-medium">Rimborso parziale (€)<input class={field + ' font-normal'} name="amount" inputmode="decimal" required /></label>
+          <label class="grid gap-1 text-sm font-medium">Motivo<input class={field + ' font-normal'} name="reason" maxlength="200" /></label>
+          <button class="btn btn-ghost">Rimborsa</button>
+        </form>
+      )}
+      {refunds.length > 0 && <ul class="text-sm">{refunds.map(({ r }) => <li>Rimborso {euro(r.amountCents)} · {r.createdAt.toLocaleDateString('it-IT')}{r.reason ? ` · ${r.reason}` : ''}</li>)}</ul>}
+      <form method="post" class="grid gap-2">
+        <input type="hidden" name="act" value="note" />
+        <label class="grid gap-1 text-sm font-medium">Note interne (non visibili al cliente)<textarea class={field + ' py-2 font-normal'} name="note" rows="3">{o.internalNote ?? ''}</textarea></label>
+        <button class="btn btn-ghost justify-self-start">Salva nota</button>
+      </form>
+    </section>
+  </div>
+</Admin>

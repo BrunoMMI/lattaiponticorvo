@@ -1,0 +1,36 @@
+---
+import Account from '../../layouts/Account.astro';
+import { sendCustomerToken } from '../../lib/customer-auth';
+import { tooMany } from '../../lib/ratelimit';
+
+export const prerender = false;
+let sent = false, error = '';
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const email = String(f.get('email') ?? '').trim().toLowerCase(), name = String(f.get('name') ?? '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 160) error = 'Inserisci un indirizzo email valido.';
+  else if (!f.has('privacy')) error = 'Per continuare devi accettare l’informativa privacy.';
+  else {
+    if (!tooMany(`creg:${Astro.clientAddress}`, 5) && !tooMany(`creg:${email}`, 3)) await sendCustomerToken(email, name);
+    sent = true; // risposta identica sia per email nuove sia per esistenti
+  }
+}
+---
+<Account title="Crea account o recupera password" narrow>
+  <div class="grid gap-4 rounded-[var(--radius-card)] bg-white p-6 shadow-soft">
+    <h1 class="text-3xl">Account</h1>
+    {sent ? (
+      <p role="status" class="rounded-lg bg-green-50 p-3 text-sm text-green-800">Controlla la tua casella email: ti abbiamo inviato il link per scegliere la password. Vale 30 minuti.</p>
+    ) : (
+      <form method="post" class="grid gap-4">
+        <p class="text-sm text-ink-soft">Ti inviamo un link per scegliere la password. Va bene sia per creare un nuovo account sia se hai dimenticato la password.</p>
+        {error && <p role="alert" class="rounded-lg bg-bordeaux-50 p-3 text-sm text-bordeaux-700">{error}</p>}
+        <label class="grid gap-1 text-sm font-medium">Nome (solo per un nuovo account)<input name="name" autocomplete="name" maxlength="120" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+        <label class="grid gap-1 text-sm font-medium">Email<input name="email" type="email" required autocomplete="email" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+        <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="privacy" required class="mt-1" /> <span>Ho letto l’<a class="underline" href="/privacy">informativa privacy</a>.</span></label>
+        <button class="btn btn-primary">Invia il link</button>
+      </form>
+    )}
+    <p class="text-sm text-center"><a class="underline" href="/account/accedi">Torna all’accesso</a></p>
+  </div>
+</Account>

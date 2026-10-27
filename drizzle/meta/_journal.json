@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792414017322,
+      "tag": "0000_powerful_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792414568771,
+      "tag": "0001_reflective_justin_hammer",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792459004804,
+      "tag": "0002_gorgeous_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792502907985,
+      "tag": "0003_aberrant_orphan",
+      "breakpoints": true
+    }
+  ]
+}

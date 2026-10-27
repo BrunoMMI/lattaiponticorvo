@@ -1,0 +1,31 @@
+---
+import Account from '../../../layouts/Account.astro';
+import { and, eq } from 'drizzle-orm';
+import { getDb, schema } from '../../../db';
+import { euro } from '../../../lib/pricing';
+import { PAYMENT_LABELS, STATUS_LABELS } from '../../../lib/order-labels';
+
+export const prerender = false;
+const c = Astro.locals.customer!;
+const id = Astro.params.id ?? '';
+if (!/^[0-9a-f-]{36}$/.test(id)) return new Response('Not found', { status: 404 });
+const db = await getDb();
+// Il filtro su customerId è ciò che impedisce di leggere gli ordini degli altri: non basta conoscere l'id.
+const [o] = await db.select().from(schema.orders).where(and(eq(schema.orders.id, id), eq(schema.orders.customerId, c.id)));
+if (!o) return new Response('Ordine non trovato', { status: 404 });
+const lines = await db.select().from(schema.orderLines).where(eq(schema.orderLines.orderId, id));
+---
+<Account title={`Ordine #${o.number}`}>
+  <p class="text-sm mb-2"><a class="underline" href="/account">← I miei ordini</a></p>
+  <h1 class="text-4xl">Ordine #{o.number}</h1>
+  <p class="mt-2 text-ink-soft">{o.createdAt.toLocaleString('it-IT')} · {STATUS_LABELS[o.status]} · {PAYMENT_LABELS[o.paymentStatus]}</p>
+  <div class="mt-6 rounded-[var(--radius-card)] bg-white p-5">
+    <table class="w-full text-sm"><caption class="sr-only">Prodotti</caption>
+      <tbody>{lines.map((l) => <tr class="border-t border-line first:border-0"><td class="py-2">{l.nameSnapshot}{l.weightGrams ? ` (${l.actualWeightGrams ?? l.weightGrams} g)` : ` × ${l.quantity}`}</td><td class="text-right">{euro(l.lineTotalCents)}</td></tr>)}</tbody></table>
+    <dl class="mt-3 grid justify-items-end gap-1 text-sm">
+      {o.discountCents > 0 && <div>Sconto: −{euro(o.discountCents)}</div>}
+      <div>Spedizione: {o.shippingCents ? euro(o.shippingCents) : 'gratis'}</div>
+      <div class="font-display text-lg">Totale: {euro(o.totalCents)}</div>
+    </dl>
+  </div>
+</Account>

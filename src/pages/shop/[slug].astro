@@ -1,0 +1,86 @@
+---
+import Base from '../../layouts/Base.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import AddToCart from '../../components/react/AddToCart.tsx';
+import { inStock, shopProduct } from '../../lib/shop';
+import { business, siteUrl } from '../../lib/site';
+import { priceLabel } from '../../lib/format';
+
+export const prerender = false;
+const p = await shopProduct(Astro.params.slug ?? '');
+if (!p) return new Response('Prodotto non trovato', { status: 404 });
+const price = p.salePriceCents ?? p.priceCents;
+const available = inStock(p) && price != null;
+const url = `${siteUrl}/shop/${p.slug}`;
+const offerPrices = p.variants.map((v) => v.priceCents ?? (p.sellUnit === 'kg' && v.weightGrams && price ? Math.round((price * v.weightGrams) / 1000) : price)).filter((x): x is number => x != null);
+const crumbs = [{ name: 'Home', url: siteUrl }, { name: 'Shop', url: `${siteUrl}/shop` }, ...(p.category ? [{ name: p.category.name, url: `${siteUrl}/shop/categoria/${p.category.slug}` }] : []), { name: p.name, url }];
+// I dati strutturati riflettono solo ciò che è visibile in pagina: nessuna recensione o valutazione inventata.
+const ld: object[] = [
+  { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: c.url })) },
+  {
+    '@context': 'https://schema.org', '@type': 'Product', name: p.name, url, description: p.shortDescription || p.description.slice(0, 300) || undefined,
+    sku: p.sku ?? undefined, image: p.images.map((i) => `${siteUrl}/media/${i.path}`), brand: { '@type': 'Brand', name: business.name },
+    category: p.category?.name,
+    ...(price != null && {
+      offers: (offerPrices.length > 1 && Math.min(...offerPrices) !== Math.max(...offerPrices))
+        ? { '@type': 'AggregateOffer', priceCurrency: 'EUR', url, lowPrice: (Math.min(...offerPrices) / 100).toFixed(2), highPrice: (Math.max(...offerPrices) / 100).toFixed(2), offerCount: offerPrices.length,
+            availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition: 'https://schema.org/NewCondition', seller: { '@type': 'Organization', name: business.name } }
+        : { '@type': 'Offer', priceCurrency: 'EUR', url, price: (price / 100).toFixed(2), priceValidUntil: new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10),
+            availability: available ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', itemCondition: 'https://schema.org/NewCondition', seller: { '@type': 'Organization', name: business.name } },
+    }),
+  },
+];
+const baseDesc = (p.seoDescription || p.shortDescription || p.description.split(/\n|(?<=[.!?])\s/)[0] || '').trim().replace(/\s+/g, ' ');
+const formats = p.variants.map((v) => v.label).slice(0, 4).join(', ');
+// Nome + testo + formati: lunga abbastanza (≥70 caratteri) e diversa anche tra prodotti dal testo simile (es. mozzarella e bocconcini).
+const metaDesc = [p.name + (baseDesc.toLowerCase().startsWith(p.name.toLowerCase()) ? '' : `: ${baseDesc.replace(/[.\s]+$/, '')}`) + '.', formats ? `Formati: ${formats}.` : '', 'Dal caseificio Lattai Ponticorvo, acquistabile online.'].filter(Boolean).join(' ');
+const nut = (p.nutrition ?? {}) as Record<string, string>;
+const nutRows: [string, string, string][] = [['energiaKcal', 'Energia', 'kcal'], ['grassi', 'Grassi', 'g'], ['saturi', 'di cui acidi grassi saturi', 'g'], ['carboidrati', 'Carboidrati', 'g'], ['zuccheri', 'di cui zuccheri', 'g'], ['proteine', 'Proteine', 'g'], ['sale', 'Sale', 'g']];
+Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+---
+<Base title={p.seoTitle || p.name} description={metaDesc} jsonLd={ld} ogImage={p.images[0] ? `/media/${p.images[0].path}` : undefined} ogImageAlt={p.images[0]?.alt || p.name}>
+  <SiteHeader />
+  <main id="main" class="container-x py-10">
+    <nav aria-label="Briciole di pane" class="text-sm text-ink-soft mb-6">
+      <a href="/">Home</a> › <a href="/shop">Shop</a>{p.category && <> › <a href={`/shop/categoria/${p.category.slug}`}>{p.category.name}</a></>} › <span aria-current="page">{p.name}</span>
+    </nav>
+    <div class="grid gap-10 md:grid-cols-2">
+      <div class="grid gap-3">
+        {p.images[0]
+          ? <img src={`/media/${p.images[0].path}`} alt={p.images[0].alt || p.name} width={p.images[0].w ?? 1200} height={p.images[0].h ?? 900} class="w-full rounded-[var(--radius-card)] object-cover" fetchpriority="high" />
+          : <div class="photo-slot aspect-[4/3] rounded-[var(--radius-card)]" role="img" aria-label="Foto in arrivo">Foto in arrivo</div>}
+        {p.images.length > 1 && <ul class="grid grid-cols-4 gap-2">{p.images.slice(1).map((im) => <li><img src={`/media/${im.path}`} alt={im.alt || p.name} width="300" height="300" loading="lazy" class="aspect-square w-full rounded-lg object-cover" /></li>)}</ul>}
+      </div>
+      <div>
+        <h1 class="text-4xl">{p.name}</h1>
+        {p.shortDescription && <p class="mt-3 text-lg text-ink-soft">{p.shortDescription}</p>}
+        <p class="mt-4 text-sm text-ink-soft">
+          {price != null && <>{p.salePriceCents != null && <s class="mr-2">{priceLabel(p.priceCents!, p.sellUnit)}</s>}<span class="font-semibold text-ink">{priceLabel(price, p.sellUnit)}</span> · IVA inclusa</>}
+        </p>
+        <div class="mt-6">
+          {available
+            ? <AddToCart client:load itemId={p.id} name={p.name} sellUnit={p.sellUnit} priceCents={price!} stepGrams={p.weightStepGrams} stockQty={p.stockQty} variableWeight={p.variableWeight}
+                variants={p.variants.map((v) => ({ id: v.id, label: v.label, weightGrams: v.weightGrams, priceCents: v.priceCents, stockQty: v.stockQty }))} />
+            : <p class="rounded-lg bg-crema p-4 font-medium">Momentaneamente non disponibile. <a class="underline" href="/shop">Scopri gli altri prodotti</a></p>}
+        </div>
+        {p.description && (
+          <div class="mt-8 grid gap-3 leading-relaxed">
+            {p.description.split(/\n+/).map((t) => t.trim()).filter(Boolean).map((t) =>
+              /^(lavorazione|conservazione|ingredienti|come si consuma)$/i.test(t)
+                ? <h2 class="mt-4 font-display text-xl">{t}</h2>
+                : <p>{t}</p>)}
+          </div>
+        )}
+        <dl class="mt-8 grid gap-4 text-sm">
+          {p.ingredients && <div><dt class="font-semibold">Ingredienti</dt><dd>{p.ingredients}</dd></div>}
+          {p.allergens.length > 0 && <div><dt class="font-semibold">Allergeni</dt><dd>Contiene: <strong>{p.allergens.join(', ')}</strong></dd></div>}
+          {p.storage && <div><dt class="font-semibold">Conservazione</dt><dd>{p.storage}</dd></div>}
+        </dl>
+        {Object.keys(nut).length > 0 && <table class="mt-6 w-full max-w-sm text-sm"><caption class="text-left font-semibold mb-1">Valori nutrizionali medi per 100 g</caption>
+          <tbody>{nutRows.filter(([k]) => nut[k]).map(([k, l, u]) => <tr class="border-t border-line"><th scope="row" class="py-1 text-left font-normal">{l}</th><td class="text-right">{nut[k]} {u}</td></tr>)}</tbody></table>}
+      </div>
+    </div>
+  </main>
+  <SiteFooter />
+</Base>

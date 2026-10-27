@@ -1,0 +1,19 @@
+---
+// I punti di forza raccontati dal vecchio sito, con icone semplici (SVG inline, nessuna libreria).
+const items = [
+  { t: 'Artigianalità', d: 'del prodotto con latte di qualità', icon: 'M12 3c3 3.5 5 6.2 5 9a5 5 0 0 1-10 0c0-2.8 2-5.5 5-9z' },
+  { t: 'Prodotti frozen', d: 'preservando la freschezza', icon: 'M12 2v20M4.2 7l15.6 10M4.2 17L19.8 7M9 3.5l3 2.5 3-2.5M9 20.5l3-2.5 3 2.5' },
+  { t: 'Trasporto refrigerato', d: 'filiera del freddo, in Italia e all’estero', icon: 'M2 7h12v9H2zM14 10h4l3 3v3h-7zM6 19a1.7 1.7 0 1 0 0-.01M17 19a1.7 1.7 0 1 0 0-.01' },
+  { t: 'Confezioni personalizzabili', d: 'con il tuo marchio e il formato che ti serve', icon: 'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8' },
+  { t: 'Possibilità di co-marketing', d: 'progetti da costruire insieme', icon: 'M8 12a3 3 0 1 0 0-.01M16 12a3 3 0 1 0 0-.01M10.5 13.5l3 0' },
+];
+---
+<ul class="grid gap-4 sm:grid-cols-2 lg:grid-cols-5" aria-label="I nostri punti di forza">
+  {items.map((i) => (
+    <li class="rounded-[var(--radius-card)] bg-white p-5 text-center shadow-soft">
+      <svg viewBox="0 0 24 24" class="mx-auto size-10 text-bordeaux-600" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={i.icon} /></svg>
+      <p class="mt-3 font-display text-lg leading-tight">{i.t}</p>
+      <p class="mt-1 text-sm text-ink-soft">{i.d}</p>
+    </li>
+  ))}
+</ul>

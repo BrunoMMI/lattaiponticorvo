@@ -1,0 +1,583 @@
+{
+ "categories": [
+  {
+   "slug": "mozzarelle-di-bufala",
+   "name": "Mozzarelle di bufala"
+  },
+  {
+   "slug": "burrata-e-ricotta",
+   "name": "Burrata e ricotta"
+  },
+  {
+   "slug": "fiordilatte-e-ristorazione",
+   "name": "Fiordilatte e formati per la ristorazione"
+  },
+  {
+   "slug": "caciocavalli-provole-scamorze",
+   "name": "Caciocavalli, provole e scamorze"
+  }
+ ],
+ "products": [
+  {
+   "oldId": 2672,
+   "name": "Bocconcini di bufala campana DOP",
+   "slug": "bocconcini-di-bufala-campana-dop",
+   "category": "mozzarelle-di-bufala",
+   "description": "Prodotta esclusivamente con latte fresco di Bufala, 100% Made in Italy, la Mozzarella è uno dei prodotti di punta più ricercati dal pubblico. Bianca e dalla sottile pelle lucida ha un profumo e un gusto molto delicati.\nLavorazione\nIl latte opportunamente analizzato, pastorizzato è successivamente fatto coagulare e maturare, fino ad arrivare alla filatura e alla mozzatura che ancora oggi, viene fatta a mano come da tradizione.\nPezzatura da 50 g.",
+   "shortDescription": "Prodotta esclusivamente con latte fresco di Bufala, 100% Made in Italy, la Mozzarella è uno dei prodotti di punta più ricercati dal pubblico.",
+   "storage": null,
+   "variants": [
+    {
+     "label": "500 g · pezzi da 50 g",
+     "weightGrams": 500,
+     "priceCents": 749,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/bocconcini-di-bufala-campana-dop-1.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "path": "shop/bocconcini-di-bufala-campana-dop-2.webp",
+     "w": 1600,
+     "h": 1066
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 2406,
+   "name": "Zizzona",
+   "slug": "zizzona",
+   "category": "mozzarelle-di-bufala",
+   "description": "La Zizzona è una variante particolarmente accattivante della Mozzarella di Latte di Bufala, dalla forma spiritosa che rievoca un seno femminile. È un prodotto che celebra la prosperità, l’abbondanza e la simpatia e che, date le sue dimensioni esalta il gusto e la consistenza lattiginosa della Mozzarella di Latte di Bufala.\nOttima per i pranzi della Domenica, le cene con gli amici, le feste e i ricevimenti, la Zizzona conquisterà i tuoi ospiti con la sua forma spiritosa e con il gusto inconfondibile della Mozzarella di Latte di Bufala.",
+   "shortDescription": "La Zizzona è una variante particolarmente accattivante della Mozzarella di Latte di Bufala, dalla forma spiritosa che rievoca un seno femminile.",
+   "storage": null,
+   "variants": [
+    {
+     "label": "1 kg",
+     "weightGrams": 1000,
+     "priceCents": 1599,
+     "inStock": true
+    },
+    {
+     "label": "2 kg",
+     "weightGrams": 2000,
+     "priceCents": 3198,
+     "inStock": true
+    },
+    {
+     "label": "3 kg",
+     "weightGrams": 3000,
+     "priceCents": 4797,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/zizzona-1.webp",
+     "w": 1399,
+     "h": 1419
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 2046,
+   "name": "Provole affumicate",
+   "slug": "provole-affumicate",
+   "category": "caciocavalli-provole-scamorze",
+   "description": "Dalla forma tondeggiante, e dal profumo intenso di affumicatura, la provola di latte vaccino, deriva direttamente dalla lavorazione della mozzarella, a cui si aggiunge il successivo processo di affumicatura con procedimenti naturali attraverso paglia o trucioli di legno\nLavorazione\nIl latte opportunamente analizzato, pastorizzato è successivamente fatto coagulare e maturare, fino ad arrivare alla filatura e alla mozzatura che ancora oggi, viene fatta a mano come da tradizione.",
+   "shortDescription": "Dalla forma tondeggiante, e dal profumo intenso di affumicatura, la provola di latte vaccino, deriva direttamente dalla lavorazione della mozzarella, a cui si aggiunge il successivo processo di affumicatura con procedimenti natura",
+   "storage": null,
+   "variants": [
+    {
+     "label": "500 g",
+     "weightGrams": 500,
+     "priceCents": 599,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/provole-affumicate-1.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "path": "shop/provole-affumicate-2.webp",
+     "w": 1417,
+     "h": 1494
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1873,
+   "name": "Mozzarella di bufala campana DOP",
+   "slug": "mozzarella-di-bufala-campana-dop",
+   "category": "mozzarelle-di-bufala",
+   "description": "Prodotta esclusivamente con latte fresco di Bufala, 100% Made in Italy, la Mozzarella è uno dei prodotti di punta più ricercati dal pubblico. Bianca e dalla sottile pelle lucida ha un profumo e un gusto molto delicati.\nLavorazione\nIl latte opportunamente analizzato, pastorizzato è successivamente fatto coagulare e maturare, fino ad arrivare alla filatura e alla mozzatura che ancora oggi, viene fatta a mano come da tradizione.\nProdotto disponibile nei tagli da 125gr e 250gr.",
+   "shortDescription": "Prodotta esclusivamente con latte fresco di Bufala, 100% Made in Italy, la Mozzarella è uno dei prodotti di punta più ricercati dal pubblico.",
+   "storage": null,
+   "variants": [
+    {
+     "label": "500 g · pezzi da 125 g",
+     "weightGrams": 500,
+     "priceCents": 749,
+     "inStock": true
+    },
+    {
+     "label": "500 g · pezzi da 250 g",
+     "weightGrams": 500,
+     "priceCents": 749,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/mozzarella-di-bufala-campana-dop-1.webp",
+     "w": 860,
+     "h": 650
+    },
+    {
+     "path": "shop/mozzarella-di-bufala-campana-dop-2.webp",
+     "w": 903,
+     "h": 600
+    },
+    {
+     "path": "shop/mozzarella-di-bufala-campana-dop-3.webp",
+     "w": 819,
+     "h": 600
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 2038,
+   "name": "Fiordilatte",
+   "slug": "fiordilatte",
+   "category": "fiordilatte-e-ristorazione",
+   "description": "Il fiordilatte è un prodotto di latte vaccino.\nDalla forma tonda, bianco lucido e profumato di latte, è adatto a svariate pietanze fresche e cotte. Prodotto adatto al congelamento per trasporti su lunghe tratte.\nLavorazione\nIl latte opportunamente analizzato, viene pastorizzato e fatto maturare naturalmente a temperatura ed umidità controllata con la cagliata del giorno precedente senza l’aggiunta di siero innesto o di fermenti lattici.",
+   "shortDescription": "Il fiordilatte è un prodotto di latte vaccino.",
+   "storage": null,
+   "variants": [
+    {
+     "label": "500 g",
+     "weightGrams": 500,
+     "priceCents": 550,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/fiordilatte-1.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "path": "shop/fiordilatte-2.webp",
+     "w": 860,
+     "h": 650
+    },
+    {
+     "path": "shop/fiordilatte-3.webp",
+     "w": 860,
+     "h": 650
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 2021,
+   "name": "Filone",
+   "slug": "filone",
+   "category": "fiordilatte-e-ristorazione",
+   "description": "Filone di fior di latte vaccino.Lavorato ancora secondo tradizione, il latte viene controllato e analizzato, pastorizzatoe fatto maturare naturalmente a temperatura ed umidità controllata con la cagliata del giorno precedente senza l’aggiunta di siero innesto o di fermenti lattici.\nIl filone è un prodotto di latte vaccino.\nDalla forma cilindrica, è adatto a svariate pietanze fresche e cotte. Prodotto adatto al congelamento per trasporti su lunghe tratte.\nLavorazione\nIl latte opportunamente analizzato, viene pastorizzato e fatto maturare naturalmente a temperatura ed umidità controllata con la cagliata del giorno precedente senza l’aggiunta di siero innesto o di fermenti lattici.",
+   "shortDescription": "Filone di fior di latte vaccino.Lavorato ancora secondo tradizione, il latte viene controllato e analizzato, pastorizzatoe fatto maturare naturalmente a temperatura ed umidità controllata con la cagliata del giorno precedente senz",
+   "storage": null,
+   "variants": [
+    {
+     "label": "1 kg",
+     "weightGrams": 1000,
+     "priceCents": 880,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/filone-1.webp",
+     "w": 860,
+     "h": 650
+    },
+    {
+     "path": "shop/filone-2.webp",
+     "w": 829,
+     "h": 600
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1901,
+   "name": "Trecce",
+   "slug": "trecce",
+   "category": "mozzarelle-di-bufala",
+   "description": "Le trecce sono prodotti esclusivamente con latte fresco di Bufala, 100% Made in Italy . Piccole oppure di pezzature differenti, si presentano bianche e dalla sottile pelle lucida; hanno un profumo e un gusto molto delicato.\nLavorazione\nIl latte opportunamente analizzato, pastorizzato è successivamente fatto coagulare e maturare, fino ad arrivare alla filatura e all’intreccio che ancora oggi, viene fatta a mano come tradizione vuole.\nDisponibile nei seguenti tagli: “treccine” e “treccione”.",
+   "shortDescription": "Le trecce sono prodotti esclusivamente con latte fresco di Bufala, 100% Made in Italy .",
+   "storage": null,
+   "variants": [
+    {
+     "label": "500 g",
+     "weightGrams": 500,
+     "priceCents": 749,
+     "inStock": true
+    },
+    {
+     "label": "1 kg",
+     "weightGrams": 1000,
+     "priceCents": 1498,
+     "inStock": true
+    },
+    {
+     "label": "2 kg",
+     "weightGrams": 2000,
+     "priceCents": 2996,
+     "inStock": true
+    },
+    {
+     "label": "3 kg",
+     "weightGrams": 3000,
+     "priceCents": 4494,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/trecce-1.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "path": "shop/trecce-2.webp",
+     "w": 1600,
+     "h": 1562
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1898,
+   "name": "Silano appassito, bianco e affumicato",
+   "slug": "silano-appassito-bianco-e-affumicato",
+   "category": "caciocavalli-provole-scamorze",
+   "description": "Il Silano è un prodotto fresco e dalla pasta morbida, ha un sapore dolce e delicato derivato dalla lavorazione di latte vaccino.\nLavorazione\nLa cagliata, insieme al siero, viene riscaldata per ottenere la “pasta cotta”; un termine legato alla tradizione casara, che nei gesti antichi descrive bene una fase cruciale della preparazione. Successivamente viene filato e formato a mano per ottenere la sua particolare sagoma.\nPer i prodotti stagionati, solitamente di pezzature più grosse, la maturazione può raggiungere i 12 o più mesi grazie ad apposite celle frigorifere con temperatura ed umidità controllate, provviste oltresì di speciali lampade UV utili a garantire l’asetticità degli ambienti e dei prodotti al loro interno.\nConservazione\nIl prodotto va consumato a temperatura ambiente e va conservato in un luogo fresco e asciutto o in frigo a 4°C.",
+   "shortDescription": "Il Silano è un prodotto fresco e dalla pasta morbida, ha un sapore dolce e delicato derivato dalla lavorazione di latte vaccino.",
+   "storage": "Il prodotto va consumato a temperatura ambiente e va conservato in un luogo fresco e asciutto o in frigo a 4°C.",
+   "variants": [
+    {
+     "label": "1 kg Affumicato",
+     "weightGrams": 1000,
+     "priceCents": 780,
+     "inStock": false
+    },
+    {
+     "label": "1 kg Bianco",
+     "weightGrams": 1000,
+     "priceCents": 780,
+     "inStock": false
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/silano-appassito-bianco-e-affumicato-1.webp",
+     "w": 860,
+     "h": 650
+    },
+    {
+     "path": "shop/silano-appassito-bianco-e-affumicato-2.webp",
+     "w": 1573,
+     "h": 1600
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1895,
+   "name": "Scamorze bianche e affumicate",
+   "slug": "scamorze-bianche-e-affumicate",
+   "category": "caciocavalli-provole-scamorze",
+   "description": "Formaggio a pasta filata. Le scamorze sono formaggi dal gusto ricco che possono essere farcite anche con olive o altre essenze.\nPezzatura da 250gr.\nLavorazione\nLa cagliata, insieme al siero, viene riscaldata per ottenere la “pasta cotta”; un termine legato alla tradizione casara, che nei gesti antichi descrive bene una fase cruciale della preparazione. Successivamente viene filato e formato a mano per ottenere la sua particolare sagoma.\nPer i prodotti stagionati, solitamente di pezzature più grosse, la maturazione può raggiungere i 12 o più mesi grazie ad apposite celle frigorifere con temperatura ed umidità controllate, provviste oltresì di speciali lampade UV utili a garantire l’asetticità degli ambienti e dei prodotti al loro interno.\nConservazione\nIl prodotto va consumato a temperatura ambiente e va conservato in un luogo fresco e asciutto o in frigo a 4°C.",
+   "shortDescription": "Formaggio a pasta filata.",
+   "storage": "Il prodotto va consumato a temperatura ambiente e va conservato in un luogo fresco e asciutto o in frigo a 4°C.",
+   "variants": [
+    {
+     "label": "Affumicata 250 g",
+     "weightGrams": 250,
+     "priceCents": 299,
+     "inStock": true
+    },
+    {
+     "label": "Bianca 250 g",
+     "weightGrams": 250,
+     "priceCents": 299,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/scamorze-bianche-e-affumicate-1.webp",
+     "w": 1566,
+     "h": 1600
+    },
+    {
+     "path": "shop/scamorze-bianche-e-affumicate-2.webp",
+     "w": 1600,
+     "h": 1459
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1883,
+   "name": "Ricotta",
+   "slug": "ricotta",
+   "category": "burrata-e-ricotta",
+   "description": "Dalla forma a canestro e dal profumo di latte, la ricotta è un prodotto delicatissimo, buona da consumare freschissima oppure per preparare impasti dolci e salati.\nLavorazione\nIl processo di coagulazione delle sieroproteine avviene con il riscaldamento del siero alla temperatura di 80-90 °C e con l’aggiunta di sali per ricotta.\nQuando la ricotta affiora in superficie viene posta in recipienti perforati per far colare il liquido in eccesso, solo alla fine di questo ciclo, la ricotta è pronta all’incartamento e alla degustazione.\nConservazione\nIl prodotto va consumato freschissimo, la data di scadenza è apposta sulla confezione.",
+   "shortDescription": "Dalla forma a canestro e dal profumo di latte, la ricotta è un prodotto delicatissimo, buona da consumare freschissima oppure per preparare impasti dolci e salati.",
+   "storage": "Il prodotto va consumato freschissimo, la data di scadenza è apposta sulla confezione.",
+   "variants": [
+    {
+     "label": "250 g",
+     "weightGrams": 250,
+     "priceCents": 199,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/ricotta-1.webp",
+     "w": 860,
+     "h": 650
+    },
+    {
+     "path": "shop/ricotta-2.webp",
+     "w": 1600,
+     "h": 1570
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1878,
+   "name": "Provolone vaccino stagionato",
+   "slug": "provolone-vaccino-stagionato",
+   "category": "caciocavalli-provole-scamorze",
+   "description": "Il provolone è un formaggio a pasta filata – prodotto con latte vaccino, mediamente stagionato (almeno 3 mesi).\nLa crosta del provolone è molto sottile e lucida, di colore giallo dorato. La pasta presenta un’occhiatura modesta e la consistenza è variabile al taglio, il provolone si presenta di colore bianco tendente al paglierino. Questo provolone di LATTAI PONTICORVO ha un sapore molto intenso, dato dalla sua lunga stagionatura.",
+   "shortDescription": "Il provolone è un formaggio a pasta filata – prodotto con latte vaccino, mediamente stagionato (almeno 3 mesi).",
+   "storage": null,
+   "variants": [
+    {
+     "label": "2 kg",
+     "weightGrams": 2000,
+     "priceCents": 2800,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/provolone-vaccino-stagionato-1.webp",
+     "w": 1519,
+     "h": 1600
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1868,
+   "name": "Julienne",
+   "slug": "julienne",
+   "category": "fiordilatte-e-ristorazione",
+   "description": "La julienne di latte vaccino è una specialità fatta di pasta di mozzarella, con ottima resa, dalla consistenza compatta e con poca umidità. Si presenta nella pratica vaschetta nel tipico taglio a julienne, ideale per farciture di pizze e altre pietanze.\nLavorazione\nIl latte opportunamente analizzato, viene pastorizzato e fatto maturare naturalmente a temperatura ed umidità controllata con la cagliata del giorno precedente senza l’aggiunta di siero innesto o di fermenti lattici.",
+   "shortDescription": "La julienne di latte vaccino è una specialità fatta di pasta di mozzarella, con ottima resa, dalla consistenza compatta e con poca umidità.",
+   "storage": null,
+   "variants": [
+    {
+     "label": "Vaschetta da 3 kg",
+     "weightGrams": 3000,
+     "priceCents": 2570,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/julienne-1.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "path": "shop/julienne-2.webp",
+     "w": 1600,
+     "h": 1067
+    },
+    {
+     "path": "shop/julienne-3.webp",
+     "w": 860,
+     "h": 600
+    },
+    {
+     "path": "shop/julienne-4.webp",
+     "w": 900,
+     "h": 600
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1865,
+   "name": "Bufalotti, caciocavalli di bufala stagionati",
+   "slug": "bufalotti-caciocavalli-di-bufala-stagionati",
+   "category": "caciocavalli-provole-scamorze",
+   "description": "Il Caciocavallo stagionato di Bufala Campana DOP è un formaggio semiduro a pasta filata, stagionato per almeno 3 mesi, dalla forma sferoidale a goccia prodotto con solo latte di bufala intero pastorizzato.\nDal sapore aromatico, piacevole, tendente al piccante a stagionatura avanzata.\nIl caciocavallo stagionato di bufala Campana è un formaggio stagionato per almeno 3 mesi. Si presenta, una volta maturo con crosta esterna sottile, liscia, uniforme, consistente. Il colore va dal paglierino al giallo dorato, la pasta è compatta, unita, burrosa di colore bianco e sapore dolce e delicato al palato, con una leggera piccantezza.\nIl nome deriva dall’antica consuetudine di appendere il formaggio, il cacio, in coppie, legate con un cappio di rafia, a cavallo di pertiche di legno in prossimità di focolari, per favorire la formazione della pellicola esterna e la successiva stagionatura. E’ prodotto in tutta la regione Campania.",
+   "shortDescription": "Il Caciocavallo stagionato di Bufala Campana DOP è un formaggio semiduro a pasta filata, stagionato per almeno 3 mesi, dalla forma sferoidale a goccia prodotto con solo latte di bufala intero pastorizzato.",
+   "storage": null,
+   "variants": [
+    {
+     "label": "Circa 2 kg",
+     "weightGrams": 2000,
+     "priceCents": 2900,
+     "inStock": true
+    }
+   ],
+   "variableWeight": true,
+   "images": [
+    {
+     "path": "shop/bufalotti-caciocavalli-di-bufala-stagionati-1.webp",
+     "w": 1600,
+     "h": 1518
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1862,
+   "name": "Caciocavallo bianco e affumicato",
+   "slug": "caciocavallo-bianco-e-affumicato",
+   "category": "caciocavalli-provole-scamorze",
+   "description": "Il caciocavallo è un formaggio a pasta filata il cui termine è tratto dal metodo di stagionatura. Legato sempre in coppia, il prodotto viene posto ad asciugare oppure a stagionare a cavallo di un pertica. Morbido nella pasta, ha un gusto delicato che ben si abbina a molte pietanze.\nLavorazione\nLa cagliata, insieme al siero, viene riscaldata per ottenere la “pasta cotta”; un termine legato alla tradizione casara, che nei gesti antichi descrive bene una fase cruciale della preparazione. Successivamente viene filato e formato a mano per ottenere la sua particolare sagoma.\nPer i prodotti stagionati, solitamente di pezzature più grosse, la maturazione può raggiungere i 12 o più mesi grazie ad apposite celle frigorifere con temperatura ed umidità controllate, provviste oltresì di speciali lampade UV utili a garantire l’asetticità degli ambienti e dei prodotti al loro interno.\nConservazione\nIl prodotto va consumato a temperatura ambiente e va conservato in un luogo fresco e asciutto o in frigo a 4°C.",
+   "shortDescription": "Il caciocavallo è un formaggio a pasta filata il cui termine è tratto dal metodo di stagionatura.",
+   "storage": "Il prodotto va consumato a temperatura ambiente e va conservato in un luogo fresco e asciutto o in frigo a 4°C.",
+   "variants": [
+    {
+     "label": "500 g Affumicato",
+     "weightGrams": 500,
+     "priceCents": 549,
+     "inStock": true
+    },
+    {
+     "label": "500 g Bianco",
+     "weightGrams": 500,
+     "priceCents": 549,
+     "inStock": true
+    },
+    {
+     "label": "1 kg Affumicato",
+     "weightGrams": 1000,
+     "priceCents": 1099,
+     "inStock": true
+    },
+    {
+     "label": "1 kg Bianco",
+     "weightGrams": 1000,
+     "priceCents": 1099,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/caciocavallo-bianco-e-affumicato-1.webp",
+     "w": 1600,
+     "h": 1541
+    },
+    {
+     "path": "shop/caciocavallo-bianco-e-affumicato-2.webp",
+     "w": 1541,
+     "h": 1600
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  },
+  {
+   "oldId": 1855,
+   "name": "Burrata di bufala",
+   "slug": "burrata-di-bufala",
+   "category": "burrata-e-ricotta",
+   "description": "La burrata tradizionalmente nasce negli anni trenta. Il nome lascia pensare al burro ma, in realtà, il nome “burrata” nasce probabilmente dalla sua consistenza che somiglia a quella del burro. La burrata, infatti, è un latticino fresco composto da stracciatella (filetti di mozzarella mescolati con panna fresca prodotta artigianalmente) racchiusa in una sacca di pasta filata.\nLa Burrata si presenta con forma a pera e superficie liscia e lucida, di colore bianco. La consistenza è morbida e cremosa; il profumo ricorda quello della panna fresca; il sapore è delicato e dolce, con un eventuale fondo gradevolmente acidulo.\nSi gusta da sola o accompagnata con insalate, verdure cotte o grigliate. L’abbinamento ideale è quello con vini bianchi secchi poco strutturati, delicatamente profumati e fruttati.\nCiò che contraddistingue la Burrata da una classica Mozzarella è l’interno: infatti, mentre all’esterno a un occhio poco attento i due prodotti potrebbero somigliarsi alquanto, solo una volta aperta si rivela il cuore morbido e la Stracciatella che lo compone. La Burrata è infatti composta da un morbido involucro di pasta filata e da un cuore di Stracciatella, ossia della pasta filata sfilacciata a mano e addizionata con panna.",
+   "shortDescription": "La burrata tradizionalmente nasce negli anni trenta.",
+   "storage": null,
+   "variants": [
+    {
+     "label": "Burrata da 500 g",
+     "weightGrams": 500,
+     "priceCents": 870,
+     "inStock": true
+    }
+   ],
+   "variableWeight": false,
+   "images": [
+    {
+     "path": "shop/burrata-di-bufala-1.webp",
+     "w": 1539,
+     "h": 1600
+    }
+   ],
+   "allergens": [
+    "Latte"
+   ]
+  }
+ ]
+}

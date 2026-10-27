@@ -1,0 +1,58 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getDb, schema } from '../../../db';
+import { and, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm';
+import { euro } from '../../../lib/pricing';
+import { STATUS_LABELS, PAYMENT_LABELS } from '../../../lib/order-labels';
+
+export const prerender = false;
+const db = await getDb();
+const { orders: O, customers: C } = schema;
+const sp = Astro.url.searchParams;
+const q = (sp.get('q') ?? '').trim().replace(/[%_\\]/g, '');
+const status = sp.get('stato') ?? '';
+const where: (SQL | undefined)[] = [
+  status && status in STATUS_LABELS ? eq(O.status, status as keyof typeof STATUS_LABELS) : undefined,
+  q ? or(ilike(O.email, `%${q}%`), ilike(C.name, `%${q}%`), sql`${O.number}::text = ${q}`) : undefined,
+];
+const rows = await db.select({ o: O, name: C.name }).from(O).leftJoin(C, eq(C.id, O.customerId)).where(and(...where)).orderBy(desc(O.createdAt)).limit(500);
+
+// Esportazione CSV. Le celle che iniziano con = + - @ vengono neutralizzate (formula injection in Excel).
+if (sp.get('format') === 'csv') {
+  const cell = (v: unknown) => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`; return `"${s.replace(/"/g, '""')}"`; };
+  const head = ['Numero', 'Data', 'Cliente', 'Email', 'Stato', 'Pagamento', 'Subtotale', 'Sconto', 'Spedizione', 'Totale'];
+  const body = rows.map(({ o, name }) => [o.number, o.createdAt.toISOString(), name, o.email, STATUS_LABELS[o.status], PAYMENT_LABELS[o.paymentStatus], (o.subtotalCents / 100).toFixed(2), (o.discountCents / 100).toFixed(2), (o.shippingCents / 100).toFixed(2), (o.totalCents / 100).toFixed(2)].map(cell).join(';'));
+  return new Response('﻿' + [head.map(cell).join(';'), ...body].join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="ordini-lattai-ponticorvo.csv"' } });
+}
+const tone = (s: string) => (s === 'paid' ? 'bg-blue-100 text-blue-800' : s === 'delivered' ? 'bg-green-100 text-green-800' : s === 'cancelled' || s === 'refunded' ? 'bg-gray-200 text-gray-700' : s === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-bordeaux-100 text-bordeaux-700');
+---
+<Admin title="Ordini">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h1 class="text-3xl">Ordini</h1>
+    <a class="btn btn-ghost" href={`/admin/ordini?${new URLSearchParams({ ...(q && { q }), ...(status && { stato: status }), format: 'csv' })}`}>Esporta CSV</a>
+  </div>
+  <form method="get" class="flex flex-wrap gap-2 mb-4">
+    <label class="sr-only" for="q">Cerca</label>
+    <input id="q" name="q" value={q} placeholder="Numero, nome o email" class="min-h-11 rounded-lg border border-line px-3 bg-white grow max-w-sm" />
+    <select name="stato" aria-label="Stato" class="min-h-11 rounded-lg border border-line px-3 bg-white">
+      <option value="">Tutti gli stati</option>{Object.entries(STATUS_LABELS).map(([k, v]) => <option value={k} selected={k === status}>{v}</option>)}
+    </select>
+    <button class="btn btn-ghost">Filtra</button>
+  </form>
+  <div class="bg-white rounded-[var(--radius-card)] overflow-x-auto">
+    <table class="w-full text-sm"><caption class="sr-only">Elenco ordini</caption>
+      <thead class="text-left text-ink-soft"><tr><th scope="col" class="p-3">N.</th><th scope="col" class="p-3">Data</th><th scope="col" class="p-3">Cliente</th><th scope="col" class="p-3">Stato</th><th scope="col" class="p-3">Pagamento</th><th scope="col" class="p-3 text-right">Totale</th></tr></thead>
+      <tbody>
+        {rows.length === 0 ? <tr><td colspan="6" class="p-6 text-center text-ink-soft">Nessun ordine.</td></tr> : rows.map(({ o, name }) => (
+          <tr class="border-t border-line">
+            <td class="p-3"><a class="underline font-medium text-bordeaux-700" href={`/admin/ordini/${o.id}`}>#{o.number}</a></td>
+            <td class="p-3 whitespace-nowrap">{o.createdAt.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' })}</td>
+            <td class="p-3">{name || '—'}<div class="text-xs text-ink-soft">{o.email}</div></td>
+            <td class="p-3"><span class={`rounded px-2 py-0.5 text-xs ${tone(o.status)}`}>{STATUS_LABELS[o.status]}</span></td>
+            <td class="p-3">{PAYMENT_LABELS[o.paymentStatus]}</td>
+            <td class="p-3 text-right font-medium">{euro(o.totalCents)}</td>
+          </tr>))}
+      </tbody>
+    </table>
+  </div>
+</Admin>

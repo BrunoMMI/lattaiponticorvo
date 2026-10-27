@@ -1,0 +1,20 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import { business as b } from '../lib/site';
+---
+<PageShell title="Termini e condizioni" path="/termini" draftLegal description="Condizioni generali di vendita degli acquisti online su lattaiponticorvo.com.">
+  <h2>1. Venditore</h2>
+  <p>{b.legalName}, {b.address.street}, {b.address.zip} {b.address.city} ({b.address.province}), P.IVA {b.vat}, email <a href={`mailto:${b.email}`}>{b.email}</a>, tel. {b.phone}. [Da aggiungere: numero REA, capitale sociale, PEC, codice SDI.]</p>
+  <h2>2. Prodotti e prezzi</h2>
+  <p>I prezzi sono in euro, IVA inclusa, e riferiti all’unità di vendita indicata (al pezzo, al kg o in confezione). Per i prodotti venduti a peso il prezzo finale si calcola sul peso scelto; per i prodotti a peso variabile si addebita il peso effettivo, mai oltre l’importo autorizzato.</p>
+  <h2>3. Ordine e pagamento</h2>
+  <p>L’ordine si considera concluso quando il pagamento viene confermato dal gestore dei pagamenti. Ricevi una email di conferma all’indirizzo indicato.</p>
+  <h2>4. Consegna</h2>
+  <p>Valgono i metodi, i costi e i tempi indicati nella pagina <a href="/spedizioni">Spedizioni e consegne</a> al momento dell’ordine.</p>
+  <h2>5. Recesso e rimborsi</h2>
+  <p>Vedi la pagina <a href="/resi">Resi e rimborsi</a>. Il diritto di recesso non si applica ai beni che rischiano di deteriorarsi rapidamente.</p>
+  <h2>6. Garanzia e reclami</h2>
+  <p>Per ogni segnalazione scrivi a <a href={`mailto:${b.email}`}>{b.email}</a>. [Da completare: garanzia legale di conformità, ADR/ODR e piattaforma europea di risoluzione online delle controversie.]</p>
+  <h2>7. Legge applicabile</h2>
+  <p>Contratto regolato dalla legge italiana; per i consumatori resta ferma la competenza del foro di residenza o domicilio.</p>
+</PageShell>

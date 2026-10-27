@@ -1,0 +1,23 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import { asc, eq } from 'drizzle-orm';
+import { getDb, schema } from '../db';
+import { euro } from '../lib/pricing';
+
+export const prerender = false;
+const methods = await (await getDb()).select().from(schema.shippingMethods).where(eq(schema.shippingMethods.active, true)).orderBy(asc(schema.shippingMethods.sortOrder));
+---
+<PageShell title="Spedizioni e consegne" path="/spedizioni" draftLegal description="Metodi di consegna, costi e tempi degli ordini online Lattai Ponticorvo.">
+  <h2>Metodi di consegna disponibili</h2>
+  {methods.length === 0
+    ? <p>I metodi di consegna verranno pubblicati a breve, insieme all’apertura dello shop.</p>
+    : <ul>{methods.map((m) => (
+      <li><strong>{m.name}</strong>
+        {m.kind === 'pickup' ? ' — gratuito' : ` — ${euro(m.priceCents)}${m.freeOverCents ? `, gratuita per ordini da ${euro(m.freeOverCents)}` : ''}`}
+        {m.zones.length > 0 && ` (zone servite: ${m.zones.join(', ')})`}
+        {m.etaText && ` · ${m.etaText}`}</li>))}</ul>}
+  <h2>Prodotti freschi</h2>
+  <p>I nostri sono prodotti freschi e deperibili: ti chiediamo di ricevere o ritirare l’ordine il prima possibile e di riporlo subito alla temperatura di conservazione indicata sulla scheda prodotto. [Da completare dal titolare: modalità di imballaggio e tempi di preparazione.]</p>
+  <h2>Peso reale</h2>
+  <p>Per i prodotti a peso variabile l’importo addebitato corrisponde al peso effettivo, mai superiore a quello autorizzato al momento dell’ordine.</p>
+</PageShell>

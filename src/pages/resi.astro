@@ -1,0 +1,15 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import { business as b } from '../lib/site';
+---
+<PageShell title="Resi e rimborsi" path="/resi" draftLegal description="Come funzionano resi, recesso e rimborsi per gli acquisti online Lattai Ponticorvo.">
+  <h2>Diritto di recesso</h2>
+  <p>Il Codice del Consumo prevede per i contratti a distanza un diritto di recesso di 14 giorni, <strong>con alcune eccezioni</strong>: tra queste, la fornitura di beni che rischiano di deteriorarsi o scadere rapidamente, come i prodotti freschi caseari, e i beni confezionati su misura del cliente.</p>
+  <p class="text-sm text-ink-soft">[Da verificare con un consulente: elenco puntuale dei prodotti esclusi dal recesso e testo definitivo.]</p>
+  <h2>Prodotto danneggiato, errato o non conforme</h2>
+  <p>Se il prodotto arriva danneggiato, diverso da quello ordinato o non conforme, scrivici entro [N] giorni dalla consegna a <a href={`mailto:${b.email}`}>{b.email}</a> o chiamaci al <a href={`tel:${b.phoneTel}`}>{b.phone}</a>, allegando se possibile una foto. [Da definire dal titolare: termine e procedura.]</p>
+  <h2>Rimborsi</h2>
+  <p>Il rimborso viene effettuato con lo stesso metodo di pagamento usato per l’acquisto. L’accredito dipende dalla banca o dal circuito di pagamento. Per i prodotti a peso variabile ti viene addebitato soltanto il peso effettivo.</p>
+  <h2>Annullamento di un ordine</h2>
+  <p>Se l’ordine non è ancora stato preparato puoi chiederne l’annullamento contattandoci: l’importo viene restituito per intero.</p>
+</PageShell>

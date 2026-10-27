@@ -1,0 +1,109 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import BarChart from '../../components/BarChart.astro';
+import { getDb } from '../../db';
+import type { Db } from '../../lib/orders';
+import { euro } from '../../lib/pricing';
+import { addDays, periodFromQuery, romeMidnight, romeYmd } from '../../lib/dates';
+import { fillDays, getStats, totals } from '../../lib/stats';
+import { formatStock } from '../../lib/format';
+
+export const prerender = false;
+const db = (await getDb()) as unknown as Db;
+const period = periodFromQuery(Astro.url.searchParams);
+const s = await getStats(db, period);
+const daily = fillDays(s.daily, period);
+
+// Esportazione dati del periodo
+if (Astro.url.searchParams.get('format') === 'csv') {
+  const rows = [['Giorno', 'Ordini', 'Fatturato (EUR)'], ...daily.map((d) => [d.day, d.orders, (d.revenueCents / 100).toFixed(2).replace('.', ',')])];
+  return new Response('﻿' + rows.map((r) => r.join(';')).join('\r\n'), { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="vendite-${romeYmd(period.from)}_${romeYmd(new Date(period.to.getTime() - 1))}.csv"` } });
+}
+
+// Riepiloghi fissi, indipendenti dal periodo scelto
+const today = romeYmd(new Date());
+const dow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7; // lunedì = 0
+const tomorrow = romeMidnight(addDays(today, 1));
+const [dToday, dWeek, dMonth] = await Promise.all([
+  totals(db, { from: romeMidnight(today), to: tomorrow }),
+  totals(db, { from: romeMidnight(addDays(today, -dow)), to: tomorrow }),
+  totals(db, { from: romeMidnight(today.slice(0, 8) + '01'), to: tomorrow }),
+]);
+
+const st = (k: string) => s.status[k] ?? 0;
+const cards = [
+  { label: 'Fatturato nel periodo', value: euro(s.main.revenueCents), note: s.main.refundedCents ? `al netto di ${euro(s.main.refundedCents)} di rimborsi` : '' },
+  { label: 'Ordini', value: String(s.main.orders) },
+  { label: 'Valore medio ordine', value: euro(s.main.avgCents) },
+  { label: 'Da preparare', value: String(st('paid')), href: '/admin/ordini?stato=paid' },
+  { label: 'In preparazione', value: String(st('preparing')), href: '/admin/ordini?stato=preparing' },
+  { label: 'Spediti', value: String(st('shipped')), href: '/admin/ordini?stato=shipped' },
+  { label: 'Annullati', value: String(st('cancelled')), href: '/admin/ordini?stato=cancelled' },
+  { label: 'Prodotti in esaurimento', value: String(s.lowStock.length), href: '/admin/magazzino' },
+];
+const maxCat = Math.max(1, ...s.byCategory.map((c) => c.revenueCents));
+const qs = (o: Record<string, string>) => `?${new URLSearchParams(o)}`;
+const field = 'min-h-10 rounded-lg border border-line bg-white px-3';
+---
+<Admin title="Panoramica">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h1 class="text-3xl">Panoramica</h1>
+    <a class="btn btn-ghost" href={qs({ ...Object.fromEntries(Astro.url.searchParams), format: 'csv' })}>Esporta CSV</a>
+  </div>
+
+  <nav aria-label="Periodo" class="mb-6 flex flex-wrap items-end gap-2">
+    {[['7', '7 giorni'], ['30', '30 giorni'], ['90', '90 giorni'], ['365', '12 mesi']].map(([k, l]) => (
+      <a href={qs({ giorni: k })} aria-current={period.key === k ? 'true' : undefined} class="rounded-full border border-line bg-white px-4 py-2 text-sm aria-[current=true]:bg-bordeaux-600 aria-[current=true]:text-white">{l}</a>
+    ))}
+    <form method="get" class="flex flex-wrap items-end gap-2 ml-2">
+      <label class="grid text-xs">Dal<input class={field} type="date" name="dal" required /></label>
+      <label class="grid text-xs">Al<input class={field} type="date" name="al" required /></label>
+      <button class="btn btn-ghost !min-h-10">Applica</button>
+    </form>
+  </nav>
+
+  <section aria-label="Incassi recenti" class="grid gap-4 sm:grid-cols-3 mb-4">
+    {[['Oggi', dToday], ['Questa settimana', dWeek], ['Questo mese', dMonth]].map(([l, v]: any) => (
+      <div class="bg-white rounded-[var(--radius-card)] p-5"><p class="text-sm text-ink-soft">{l}</p><p class="font-display text-3xl mt-1">{euro(v.revenueCents)}</p><p class="text-xs text-ink-soft">{v.orders} {v.orders === 1 ? 'ordine' : 'ordini'}</p></div>
+    ))}
+  </section>
+
+  <section aria-label={`Indicatori: ${period.label}`} class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {cards.map((c) => (
+      <div class="bg-white rounded-[var(--radius-card)] p-5">
+        <p class="text-sm text-ink-soft">{c.label}</p>
+        <p class="font-display text-2xl mt-1">{c.href ? <a class="underline decoration-line" href={c.href}>{c.value}</a> : c.value}</p>
+        {c.note && <p class="text-xs text-ink-soft">{c.note}</p>}
+      </div>
+    ))}
+  </section>
+
+  <div class="mt-6 grid gap-6 lg:grid-cols-2">
+    <section class="bg-white rounded-[var(--radius-card)] p-5"><h2 class="text-xl mb-3">Fatturato per giorno <span class="text-sm font-sans text-ink-soft">· {period.label}</span></h2>
+      <BarChart title="Fatturato giornaliero" data={daily.map((d) => ({ label: d.day, value: d.revenueCents }))} format={euro} /></section>
+    <section class="bg-white rounded-[var(--radius-card)] p-5"><h2 class="text-xl mb-3">Ordini per giorno</h2>
+      <BarChart title="Ordini giornalieri" data={daily.map((d) => ({ label: d.day, value: d.orders }))} format={(v) => String(v)} /></section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5"><h2 class="text-xl mb-3">Prodotti più venduti</h2>
+      {s.top.length === 0 ? <p class="text-sm text-ink-soft">Nessuna vendita nel periodo.</p> : (
+        <table class="w-full text-sm"><caption class="sr-only">Prodotti più venduti</caption><thead class="text-left text-ink-soft"><tr><th scope="col">Prodotto</th><th scope="col" class="text-right">Q.tà</th><th scope="col" class="text-right">Incasso</th></tr></thead>
+          <tbody>{s.top.map((t) => <tr class="border-t border-line"><td class="py-1.5">{t.name}</td><td class="text-right">{t.units}</td><td class="text-right">{euro(t.revenueCents)}</td></tr>)}</tbody></table>)}</section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5"><h2 class="text-xl mb-3">Vendite per categoria</h2>
+      {s.byCategory.length === 0 ? <p class="text-sm text-ink-soft">Nessuna vendita nel periodo.</p> : (
+        <ul class="grid gap-2">{s.byCategory.map((c) => (
+          <li><div class="flex justify-between text-sm"><span>{c.name}</span><span>{euro(c.revenueCents)}</span></div>
+            <div class="mt-1 h-2 rounded bg-crema" role="presentation"><div class="h-2 rounded bg-bordeaux-600" style={`width:${Math.round((c.revenueCents / maxCat) * 100)}%`}></div></div></li>))}</ul>)}</section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5"><h2 class="text-xl mb-3">Clienti</h2>
+      <dl class="grid grid-cols-3 gap-3 text-center">
+        <div><dt class="text-xs text-ink-soft">Che hanno ordinato</dt><dd class="font-display text-2xl">{s.customers.total}</dd></div>
+        <div><dt class="text-xs text-ink-soft">Nuovi</dt><dd class="font-display text-2xl">{s.customers.new}</dd></div>
+        <div><dt class="text-xs text-ink-soft">Ricorrenti</dt><dd class="font-display text-2xl">{s.customers.returning}</dd></div>
+      </dl></section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5"><h2 class="text-xl mb-3">In esaurimento</h2>
+      {s.lowStock.length === 0 ? <p class="text-sm text-ink-soft">Nessun prodotto sotto soglia.</p> : (
+        <ul class="text-sm grid gap-1">{s.lowStock.map((l) => <li><a class="underline" href={`/admin/prodotti/${l.id}`}>{l.name}</a>: {formatStock(l.stockQty, l.unit)}</li>)}</ul>)}</section>
+  </div>
+</Admin>

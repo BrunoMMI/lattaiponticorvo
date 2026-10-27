@@ -1,0 +1,51 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { createHash } from 'node:crypto';
+import { and, eq, gt } from 'drizzle-orm';
+import { getDb, schema } from '../../db';
+import { hashPassword, passwordProblem, audit } from '../../lib/auth';
+import { tooMany } from '../../lib/ratelimit';
+
+export const prerender = false;
+Astro.response.headers.set('Referrer-Policy', 'no-referrer'); // il token è nell'URL: non deve finire nei referrer
+const token = Astro.url.searchParams.get('token') ?? '';
+const hash = createHash('sha256').update(token).digest('hex');
+const db = await getDb();
+const [row] = await db.select().from(schema.passwordResets).where(and(eq(schema.passwordResets.tokenHash, hash), gt(schema.passwordResets.expiresAt, new Date())));
+let error = '', done = false;
+
+if (row && Astro.request.method === 'POST') {
+  const pw = String((await Astro.request.formData()).get('password') ?? '');
+  const problem = passwordProblem(pw);
+  if (tooMany(`resetpw:${Astro.clientAddress}`, 10)) error = 'Troppi tentativi.';
+  else if (problem) error = problem;
+  else {
+    await db.transaction(async (tx) => {
+      // il token si consuma nella stessa transazione: un solo utilizzo possibile
+      const used = await tx.delete(schema.passwordResets).where(eq(schema.passwordResets.tokenHash, hash)).returning();
+      if (!used.length) throw new Error('Link già usato');
+      await tx.update(schema.users).set({ passwordHash: await hashPassword(pw) }).where(eq(schema.users.id, row.userId));
+      await tx.delete(schema.sessions).where(eq(schema.sessions.userId, row.userId)); // chiude tutte le sessioni aperte
+    }).then(() => { done = true; }).catch(() => { error = 'Il link non è più valido.'; });
+    if (done) await audit(row.userId, 'password.reset');
+  }
+}
+---
+<Admin title="Nuova password" bare>
+  <div class="w-full max-w-sm bg-white rounded-[var(--radius-card)] shadow-soft p-6 grid gap-4">
+    <h1 class="text-2xl text-center">Nuova password</h1>
+    {done ? <>
+      <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 text-sm">Password aggiornata. Tutte le sessioni precedenti sono state chiuse.</p>
+      <a class="btn btn-primary" href="/admin/login">Accedi</a>
+    </> : !row ? <>
+      <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 text-sm">Il link non è valido o è scaduto.</p>
+      <a class="btn btn-ghost" href="/admin/password-dimenticata">Richiedi un nuovo link</a>
+    </> : (
+      <form method="post" class="grid gap-4">
+        {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 text-sm">{error}</p>}
+        <label class="grid gap-1 text-sm font-medium">Nuova password (min. 12 caratteri)<input name="password" type="password" minlength="12" required autocomplete="new-password" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+        <button class="btn btn-primary">Salva</button>
+      </form>
+    )}
+  </div>
+</Admin>

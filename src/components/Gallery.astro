@@ -1,0 +1,14 @@
+---
+import { photoAttrs, photoFull, type SitePhoto } from '../lib/site-media';
+interface Props { items: SitePhoto[]; label: string }
+const { items, label } = Astro.props;
+---
+<ul class="not-prose columns-1 gap-4 sm:columns-2 lg:columns-3" aria-label={label}>
+  {items.map((p) => (
+    <li class="mb-4 break-inside-avoid">
+      <a href={photoFull(p)} target="_blank" rel="noopener" class="block overflow-hidden rounded-[var(--radius-card)] shadow-soft" aria-label={`Apri la foto a grandezza intera: ${p.alt}`}>
+        <img {...photoAttrs(p, '(min-width: 1024px) 340px, (min-width: 640px) 45vw, 100vw')} loading="lazy" decoding="async" class="w-full transition-transform duration-500 hover:scale-[1.03]" />
+      </a>
+    </li>
+  ))}
+</ul>

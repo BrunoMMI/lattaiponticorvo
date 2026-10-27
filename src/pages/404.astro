@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+Astro.response.status = 404;
+---
+<Base title="Pagina non trovata" description="La pagina che cerchi non esiste." noindex>
+  <SiteHeader />
+  <main id="main" class="container-x py-24 text-center">
+    <p class="text-bordeaux-600 font-semibold">Errore 404</p>
+    <h1 class="text-4xl mt-2">Questa pagina non esiste</h1>
+    <p class="mt-3 text-ink-soft">Forse è stata spostata. Intanto, puoi scoprire i nostri prodotti o il menù del locale.</p>
+    <p class="mt-8 flex flex-wrap justify-center gap-3"><a class="btn btn-primary" href="/shop">Vai allo shop</a><a class="btn btn-ghost" href="/menu">Consulta il menù</a><a class="btn btn-ghost" href="/">Home</a></p>
+  </main>
+  <SiteFooter />
+</Base>

@@ -1,0 +1,81 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { slugify } from '../../lib/slug';
+import { audit } from '../../lib/auth';
+
+export const prerender = false;
+const db = await getDb();
+const { categories: C } = schema;
+const user = Astro.locals.user!;
+let flash = '', error = '';
+const txt = (f: FormData, k: string, max = 120) => String(f.get(k) ?? '').trim().slice(0, max);
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = txt(f, 'act', 20), id = txt(f, 'id', 40);
+  try {
+    if (act === 'create') {
+      const name = txt(f, 'name');
+      if (!name) throw new Error('Inserisci il nome della categoria.');
+      const parentId = txt(f, 'parent', 40) || null;
+      let slug = slugify(name);
+      const [dup] = await db.select({ id: C.id }).from(C).where(and(eq(C.scope, 'shop'), eq(C.slug, slug)));
+      if (dup) slug += `-${Date.now().toString(36)}`;
+      const [{ n }] = await db.select({ n: sql<number>`coalesce(max(sort_order),0)::int` }).from(C).where(eq(C.scope, 'shop'));
+      const [c] = await db.insert(C).values({ scope: 'shop', name, slug, parentId, sortOrder: n + 1 }).returning();
+      await audit(user.id, 'category.create', 'category', c.id, { name });
+      flash = 'Categoria creata.';
+    } else if (act === 'save') {
+      const name = txt(f, 'name');
+      if (!name) throw new Error('Il nome non può essere vuoto.');
+      await db.update(C).set({ name, sortOrder: parseInt(txt(f, 'sort', 6), 10) || 0, published: f.has('published') }).where(and(eq(C.id, id), eq(C.scope, 'shop')));
+      flash = 'Salvato.';
+    } else if (act === 'delete') {
+      const [used] = await db.select({ n: sql<number>`count(*)::int` }).from(schema.items).where(eq(schema.items.shopCategoryId, id));
+      const [kids] = await db.select({ n: sql<number>`count(*)::int` }).from(C).where(eq(C.parentId, id));
+      if (used.n > 0 || kids.n > 0) throw new Error('La categoria contiene prodotti o sottocategorie: spostali prima, oppure nascondila.');
+      await db.delete(C).where(and(eq(C.id, id), eq(C.scope, 'shop')));
+      await audit(user.id, 'category.delete', 'category', id);
+      flash = 'Categoria eliminata.';
+    }
+  } catch (e) { error = e instanceof Error ? e.message : 'Operazione non riuscita.'; }
+}
+
+const cats = await db.select().from(C).where(eq(C.scope, 'shop')).orderBy(asc(C.sortOrder), asc(C.name));
+const counts = await db.select({ id: schema.items.shopCategoryId, n: sql<number>`count(*)::int` }).from(schema.items).where(eq(schema.items.inShop, true)).groupBy(schema.items.shopCategoryId);
+const count = (id: string) => counts.find((c) => c.id === id)?.n ?? 0;
+const roots = cats.filter((c) => !c.parentId);
+const ordered = roots.flatMap((r) => [r, ...cats.filter((c) => c.parentId === r.id)]);
+const field = 'min-h-11 rounded-lg border border-line px-3 bg-white';
+---
+<Admin title="Categorie">
+  <h1 class="text-3xl mb-6">Categorie dello shop</h1>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+  <form method="post" class="bg-white rounded-[var(--radius-card)] p-5 mb-6 flex flex-wrap gap-2 items-end max-w-3xl">
+    <input type="hidden" name="act" value="create" />
+    <label class="grid gap-1 text-sm font-medium grow">Nuova categoria<input class={field + ' font-normal'} name="name" required placeholder="es. Mozzarelle" /></label>
+    <label class="grid gap-1 text-sm font-medium">Dentro a<select class={field + ' font-normal'} name="parent"><option value="">— categoria principale —</option>{roots.map((r) => <option value={r.id}>{r.name}</option>)}</select></label>
+    <button class="btn btn-primary">Aggiungi</button>
+  </form>
+  {ordered.length === 0 ? <p class="text-ink-soft">Nessuna categoria ancora.</p> : (
+    <ul class="grid gap-2 max-w-3xl">
+      {ordered.map((c) => (
+        <li class:list={['bg-white rounded-lg p-3', c.parentId && 'ml-8']}>
+          <form method="post" class="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="id" value={c.id} />
+            <label class="sr-only" for={`n${c.id}`}>Nome</label>
+            <input id={`n${c.id}`} class={field + ' grow'} name="name" value={c.name} />
+            <label class="text-xs text-ink-soft flex items-center gap-1">Ordine <input class={field + ' w-20'} name="sort" type="number" value={c.sortOrder} /></label>
+            <label class="text-sm flex items-center gap-1"><input type="checkbox" name="published" checked={c.published} /> Visibile</label>
+            <span class="text-xs text-ink-soft">{count(c.id)} prodotti</span>
+            <button class="btn btn-ghost !min-h-9" name="act" value="save">Salva</button>
+            <button class="underline text-bordeaux-700 text-sm" name="act" value="delete" formnovalidate>Elimina</button>
+          </form>
+        </li>
+      ))}
+    </ul>
+  )}
+</Admin>

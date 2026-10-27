@@ -1,0 +1,61 @@
+---
+import CartLink from './react/CartLink.tsx';
+
+const azienda = [
+  { href: '/chi-siamo', label: 'Chi siamo' },
+  { href: '/il-caseificio', label: 'Il caseificio' },
+  { href: '/produzione', label: 'La produzione' },
+  { href: '/punto-vendita', label: 'Il punto vendita' },
+];
+const main = [
+  { href: '/', label: 'Home' },
+  { href: '/shop', label: 'Shop' },
+  { href: '/menu', label: 'Menù' },
+  { href: '/per-le-aziende', label: 'Per le aziende' },
+  { href: '/contatti', label: 'Contatti' },
+];
+const path = Astro.url.pathname;
+const inAzienda = azienda.some((a) => path === a.href || path.startsWith(a.href + '/'));
+const cur = (href: string) => (href === '/' ? path === '/' : path === href || path.startsWith(href + '/'));
+---
+<header class="sticky top-0 z-40 border-b border-line bg-latte/90 backdrop-blur">
+  <div class="container-x flex items-center justify-between py-3">
+    <a href="/" aria-label="Lattai Ponticorvo, home"><img src="/brand/logo.svg" alt="Lattai Ponticorvo, casari dal 1968" width="150" height="72" class="h-14 w-auto md:h-16" /></a>
+
+    <nav aria-label="Principale" class="hidden items-center gap-6 font-medium lg:flex">
+      <a href="/" aria-current={cur('/') ? 'page' : undefined} class="hover:text-bordeaux-600 aria-[current=page]:text-bordeaux-600">Home</a>
+      <details class="relative" data-menu>
+        <summary class:list={['cursor-pointer list-none hover:text-bordeaux-600', inAzienda && 'text-bordeaux-600']}>Azienda <span aria-hidden="true">▾</span></summary>
+        <ul class="absolute left-0 top-full mt-2 grid w-52 gap-1 rounded-2xl bg-white p-2 shadow-soft">
+          {azienda.map((l) => <li><a href={l.href} aria-current={cur(l.href) ? 'page' : undefined} class="block rounded-lg px-3 py-2 hover:bg-bordeaux-50 aria-[current=page]:font-semibold aria-[current=page]:text-bordeaux-600">{l.label}</a></li>)}
+        </ul>
+      </details>
+      {main.slice(1).map((l) => <a href={l.href} aria-current={cur(l.href) ? 'page' : undefined} class="hover:text-bordeaux-600 aria-[current=page]:text-bordeaux-600">{l.label}</a>)}
+    </nav>
+
+    <div class="hidden items-center gap-2 lg:flex">
+      <a href="/account" class="px-3 py-2 text-sm font-medium hover:text-bordeaux-600">Account</a>
+      <CartLink client:idle />
+    </div>
+
+    <details class="relative lg:hidden">
+      <summary class="btn btn-ghost cursor-pointer list-none" aria-label="Apri il menu di navigazione">Menu</summary>
+      <nav aria-label="Mobile" class="absolute right-0 mt-2 grid max-h-[80vh] w-64 gap-0.5 overflow-auto rounded-2xl bg-white p-3 shadow-soft">
+        <a href="/" class="rounded-lg px-3 py-3 hover:bg-bordeaux-50">Home</a>
+        <p class="px-3 pt-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">Azienda</p>
+        {azienda.map((l) => <a href={l.href} class="rounded-lg px-3 py-2.5 pl-6 hover:bg-bordeaux-50">{l.label}</a>)}
+        <hr class="my-1 border-line" />
+        {main.slice(1).map((l) => <a href={l.href} class="rounded-lg px-3 py-3 hover:bg-bordeaux-50">{l.label}</a>)}
+        <hr class="my-1 border-line" />
+        <a href="/account" class="rounded-lg px-3 py-3 hover:bg-bordeaux-50">Account</a>
+        <a href="/carrello" class="rounded-lg px-3 py-3 font-semibold text-bordeaux-700 hover:bg-bordeaux-50">Carrello</a>
+      </nav>
+    </details>
+  </div>
+</header>
+<script>
+  // Menu a tendina: si chiude con Esc o con un clic fuori.
+  const menus = [...document.querySelectorAll<HTMLDetailsElement>('details[data-menu]')];
+  document.addEventListener('click', (e) => menus.forEach((m) => { if (m.open && !m.contains(e.target as Node)) m.open = false; }));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') menus.forEach((m) => { if (m.open) { m.open = false; m.querySelector('summary')?.focus(); } }); });
+</script>

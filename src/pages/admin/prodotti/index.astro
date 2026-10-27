@@ -1,0 +1,82 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getDb, schema } from '../../../db';
+import { and, asc, eq, ilike, isNull, isNotNull, or } from 'drizzle-orm';
+import { slugify } from '../../../lib/slug';
+import { audit } from '../../../lib/auth';
+import { formatStock, priceLabel, unitLabels } from '../../../lib/format';
+
+export const prerender = false;
+const db = await getDb();
+const { items: T } = schema;
+const user = Astro.locals.user!;
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const name = String((await Astro.request.formData()).get('name') ?? '').trim().slice(0, 160);
+  if (!name) error = 'Inserisci il nome del prodotto.';
+  else {
+    let slug = slugify(name);
+    const [dup] = await db.select({ id: T.id }).from(T).where(eq(T.slug, slug));
+    if (dup) slug += `-${Date.now().toString(36)}`;
+    const [it] = await db.insert(T).values({ name, slug, inShop: true, published: false }).returning();
+    await audit(user.id, 'product.create', 'item', it.id, { name });
+    return Astro.redirect(`/admin/prodotti/${it.id}`);
+  }
+}
+
+const q = (Astro.url.searchParams.get('q') ?? '').trim().replace(/[%_\\]/g, '');
+const view = Astro.url.searchParams.get('stato') ?? 'attivi';
+const rows = await db.select().from(T).where(and(
+  eq(T.inShop, true),
+  view === 'archiviati' ? isNotNull(T.archivedAt) : isNull(T.archivedAt),
+  q ? or(ilike(T.name, `%${q}%`), ilike(T.sku, `%${q}%`)) : undefined,
+)).orderBy(asc(T.name));
+const cats = await db.select().from(schema.categories).where(eq(schema.categories.scope, 'shop'));
+const catName = (id: string | null) => cats.find((c) => c.id === id)?.name ?? '—';
+const low = (r: (typeof rows)[number]) => r.lowStockThreshold > 0 && r.stockQty <= r.lowStockThreshold;
+---
+<Admin title="Prodotti">
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h1 class="text-3xl">Prodotti dello shop</h1>
+    <form method="post" class="flex gap-2">
+      <label class="sr-only" for="nn">Nome nuovo prodotto</label>
+      <input id="nn" name="name" placeholder="Nome del nuovo prodotto" required class="min-h-11 rounded-lg border border-line px-3 bg-white" />
+      <button class="btn btn-primary">Crea</button>
+    </form>
+  </div>
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+  <form method="get" class="flex flex-wrap gap-2 mb-4">
+    <label class="sr-only" for="q">Cerca</label>
+    <input id="q" name="q" value={q} placeholder="Cerca per nome o SKU" class="min-h-11 rounded-lg border border-line px-3 bg-white grow max-w-sm" />
+    <select name="stato" aria-label="Stato" class="min-h-11 rounded-lg border border-line px-3 bg-white">
+      <option value="attivi" selected={view === 'attivi'}>Attivi</option><option value="archiviati" selected={view === 'archiviati'}>Archiviati</option>
+    </select>
+    <button class="btn btn-ghost">Filtra</button>
+  </form>
+
+  {rows.length === 0 ? (
+    <div class="bg-white rounded-[var(--radius-card)] p-8 text-center text-ink-soft">
+      <p class="font-display text-xl text-ink">Lo shop è ancora vuoto.</p>
+      <p class="mt-1">Crea il primo prodotto con il campo qui sopra: resterà nascosto finché non lo pubblichi.</p>
+    </div>
+  ) : (
+    <div class="bg-white rounded-[var(--radius-card)] overflow-x-auto">
+      <table class="w-full text-sm">
+        <caption class="sr-only">Elenco prodotti</caption>
+        <thead class="text-left text-ink-soft"><tr><th scope="col" class="p-3">Prodotto</th><th scope="col" class="p-3">Categoria</th><th scope="col" class="p-3">Prezzo</th><th scope="col" class="p-3">Giacenza</th><th scope="col" class="p-3">Stato</th></tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr class="border-t border-line">
+              <td class="p-3"><a class="font-medium text-bordeaux-700 underline" href={`/admin/prodotti/${r.id}`}>{r.name}</a><div class="text-xs text-ink-soft">{unitLabels[r.sellUnit]}{r.sku ? ` · ${r.sku}` : ''}</div></td>
+              <td class="p-3">{catName(r.shopCategoryId)}</td>
+              <td class="p-3">{r.priceCents != null ? priceLabel(r.salePriceCents ?? r.priceCents, r.sellUnit) : <span class="text-bordeaux-600">manca</span>}</td>
+              <td class="p-3">{formatStock(r.stockQty, r.sellUnit)}{low(r) && <span class="ml-2 rounded bg-amber-100 text-amber-800 px-1.5 py-0.5 text-xs">in esaurimento</span>}</td>
+              <td class="p-3">{r.archivedAt ? 'Archiviato' : r.published ? 'Pubblicato' : 'Bozza'}{r.featured && ' · ★'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</Admin>

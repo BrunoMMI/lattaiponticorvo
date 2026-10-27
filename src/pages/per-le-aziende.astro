@@ -1,0 +1,28 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import Values from '../components/Values.astro';
+import Certifications from '../components/Certifications.astro';
+import { photoAttrs, pic } from '../lib/site-media';
+const photos = [pic('log-furgone-carico'), pic('log-bancali'), pic('prod-confezionate-2'), pic('prod-linea')];
+---
+<PageShell wide title="Per le aziende" path="/per-le-aziende" ogImage="/media/site/log-furgone-carico.webp"
+  description="Forniture di latticini per ristoranti, pizzerie, rivendite e distribuzione: filiera del freddo, shelf-life di 365 giorni, confezioni personalizzabili e co-marketing.">
+  <div class="mx-auto max-w-3xl">
+    <p class="font-display text-xl text-ink-soft">Rivendite, ristorazione, distribuzione</p>
+    <h2 class="!mt-2">Latticini artigianali, ovunque ti servano</h2>
+    <p>La nostra azienda distribuisce prodotti caseari su tutto il territorio nazionale ed internazionale, grazie alla collaudata filiera del freddo.</p>
+    <p>I prodotti vengono abbattuti a −40 °C nello stesso giorno di produzione, garantendo una shelf-life di 365 giorni. Grazie ai nostri trasporti refrigerati riusciamo ad accontentare i clienti più esigenti che desiderano ricevere i prodotti freschi in tempi brevi.</p>
+    <h3>Formati pensati per i professionisti</h3>
+    <p>Accanto ai prodotti al dettaglio realizziamo formati per la ristorazione e la pizzeria, come il filone di fiordilatte e la julienne di latte vaccino in vaschetta da 3 kg, dalla consistenza compatta e con poca umidità, ideale per farciture di pizze e altre pietanze. Fiordilatte e filone sono adatti al congelamento per i trasporti su lunghe tratte.</p>
+  </div>
+  <ul class="not-prose mt-8 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Foto della logistica e del confezionamento">
+    {photos.map((p) => <li><img {...photoAttrs(p, '(min-width: 768px) 25vw, 50vw')} loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover" /></li>)}
+  </ul>
+  <div class="not-prose mt-12"><Values /></div>
+  <div class="not-prose mt-12"><Certifications /></div>
+  <div class="mx-auto mt-12 max-w-3xl rounded-[var(--radius-card)] bg-crema p-6 text-center">
+    <h2 class="!mt-0">Parliamo della tua fornitura</h2>
+    <p>Raccontaci cosa ti serve: quantità, formati, confezioni personalizzate. Ti rispondiamo noi, direttamente.</p>
+    <p class="mt-4"><a class="btn btn-primary !text-white !no-underline" href="/contatti?richiesta=rivendita">Richiedi informazioni</a></p>
+  </div>
+</PageShell>

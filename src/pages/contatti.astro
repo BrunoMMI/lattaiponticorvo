@@ -1,0 +1,44 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import { business as b } from '../lib/site';
+import { photos, photoAttrs } from '../lib/site-media';
+const sent = Astro.url.searchParams.get('inviato');
+const richiesta = Astro.url.searchParams.get('richiesta') === 'rivendita' ? 'rivendita' : 'info';
+const err = Astro.url.searchParams.get('errore');
+const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${b.address.street}, ${b.address.zip} ${b.address.city} ${b.address.province}`)}`;
+export const prerender = false;
+---
+<PageShell title="Contatti" path="/contatti" pageType="ContactPage" description="Dove trovarci, orari di apertura, telefono ed email di Lattai Ponticorvo ad Alvignano (CE).">
+  <img {...photoAttrs(photos.facciata, '(min-width: 768px) 672px, 100vw')} loading="eager" class="aspect-[16/9] w-full rounded-[var(--radius-card)] object-cover" />
+  <div class="grid grid-cols-1 gap-8 md:grid-cols-2 not-prose">
+    <div class="grid min-w-0 gap-3 break-words">
+      <h2 class="text-2xl">Vieni a trovarci</h2>
+      <address class="not-italic">{b.address.street}<br />{b.address.zip} {b.address.city} ({b.address.province})</address>
+      <p><a class="underline text-bordeaux-600" href={maps} target="_blank" rel="noopener">Apri su Google Maps</a></p>
+      <h3 class="font-display text-lg mt-2">Orari</h3>
+      <ul>{b.hours.map((h) => <li>{h.label}: <strong>{h.value}</strong></li>)}</ul>
+      <p>Telefono: <a class="underline text-bordeaux-600" href={`tel:${b.phoneTel}`}>{b.phone}</a><br />Email: <a class="underline text-bordeaux-600" href={`mailto:${b.email}`}>{b.email}</a></p>
+      <ul class="flex flex-wrap gap-x-4 gap-y-1 text-bordeaux-600 underline">
+        <li><a href={b.social.instagram} target="_blank" rel="noopener">Instagram</a></li><li><a href={b.social.facebook} target="_blank" rel="noopener">Facebook</a></li><li><a href={b.social.tiktok} target="_blank" rel="noopener">TikTok</a></li>
+      </ul>
+    </div>
+    <form method="post" action="/api/contatti" class="grid gap-3 rounded-[var(--radius-card)] bg-white p-5 h-fit">
+      <h2 class="text-2xl">Scrivici</h2>
+      {sent && <p role="status" class="rounded-lg bg-green-50 p-3 text-green-800 text-sm">Messaggio inviato, ti risponderemo al più presto.</p>}
+      {err && <p role="alert" class="rounded-lg bg-bordeaux-50 p-3 text-bordeaux-700 text-sm">{err === 'dati' ? 'Controlla i campi e riprova.' : 'Invio non riuscito. Riprova o chiamaci.'}</p>}
+      <label class="grid gap-1 text-sm font-medium">Nome<input name="name" required minlength="2" maxlength="100" autocomplete="name" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+      <label class="grid gap-1 text-sm font-medium">Email<input name="email" type="email" required maxlength="160" autocomplete="email" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+      <label class="grid gap-1 text-sm font-medium">Telefono (facoltativo)<input name="phone" type="tel" maxlength="30" autocomplete="tel" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+      <label class="grid gap-1 text-sm font-medium">Tipo di richiesta
+        <select name="request" class="min-h-11 rounded-lg border border-line px-3 font-normal">
+          <option value="info" selected={richiesta === 'info'}>Informazioni</option>
+          <option value="assistenza">Assistenza</option>
+          <option value="rivendita" selected={richiesta === 'rivendita'}>Rivendita, ristorazione, distribuzione</option>
+        </select></label>
+      <label class="grid gap-1 text-sm font-medium">Messaggio<textarea name="message" required minlength="10" maxlength="2000" rows="5" class="rounded-lg border border-line px-3 py-2 font-normal"></textarea></label>
+      <div class="hidden" aria-hidden="true"><label>Non compilare<input name="website" tabindex="-1" autocomplete="off" /></label></div>
+      <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="privacy" required class="mt-1" /> <span>Ho letto l’<a class="underline" href="/privacy">informativa privacy</a>.</span></label>
+      <button class="btn btn-primary">Invia</button>
+    </form>
+  </div>
+</PageShell>

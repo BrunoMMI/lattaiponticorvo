@@ -1,0 +1,25 @@
+---
+interface Props { src: string; poster: string; class?: string; label?: string }
+const { src, poster, class: cls = '', label = 'il video' } = Astro.props;
+---
+<!-- Video decorativo: muto, senza audio, con pulsante di pausa (WCAG 2.2.2), fermo se l'utente chiede meno animazioni o ha il risparmio dati. -->
+<div class:list={['loop-video', cls]}>
+  <video class="h-full w-full object-cover motion-reduce:hidden" muted loop playsinline preload="metadata" poster={poster} aria-hidden="true" tabindex="-1" data-src={src}></video>
+  <img src={poster} alt="" width="1600" height="900" class="absolute inset-0 -z-10 h-full w-full object-cover" loading="eager" decoding="async" />
+  <button type="button" class="loop-toggle absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1.5 text-xs text-white backdrop-blur hover:bg-black/70 motion-reduce:hidden" aria-pressed="false">Metti in pausa {label}</button>
+</div>
+<script>
+  document.querySelectorAll<HTMLElement>('.loop-video').forEach((box) => {
+    const v = box.querySelector('video'), btn = box.querySelector<HTMLButtonElement>('.loop-toggle');
+    if (!v || !btn) return;
+    const conn = (navigator as any).connection;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || conn?.saveData) { v.remove(); btn.remove(); return; }
+    v.src = v.dataset.src!; // il video si scarica solo se consentito
+    v.play().catch(() => {});
+    btn.addEventListener('click', () => {
+      const paused = !v.paused; paused ? v.pause() : v.play();
+      btn.setAttribute('aria-pressed', String(paused));
+      btn.textContent = paused ? btn.textContent!.replace('Metti in pausa', 'Riprendi') : btn.textContent!.replace('Riprendi', 'Metti in pausa');
+    });
+  });
+</script>

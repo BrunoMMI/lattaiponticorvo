@@ -1,0 +1,28 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { readSession, checkTotp, completeTotp, audit } from '../../lib/auth';
+import { tooMany } from '../../lib/ratelimit';
+
+export const prerender = false;
+const s = await readSession(Astro.cookies);
+if (!s?.session.pendingTotp || !s.user.totpSecret) return Astro.redirect('/admin/login');
+let error = '';
+if (Astro.request.method === 'POST') {
+  const code = String((await Astro.request.formData()).get('code') ?? '');
+  if (tooMany(`totp:${s.user.id}`, 6)) error = 'Troppi tentativi. Riprova più tardi.';
+  else if (checkTotp(s.user.totpSecret, s.user.email, code)) {
+    await completeTotp(Astro.cookies, s.user.id);
+    await audit(s.user.id, 'login', '2fa');
+    return Astro.redirect('/admin');
+  } else error = 'Codice non valido.';
+}
+---
+<Admin title="Verifica in due passaggi" bare>
+  <form method="post" class="w-full max-w-sm bg-white rounded-[var(--radius-card)] shadow-soft p-6 grid gap-4">
+    <h1 class="text-2xl text-center">Verifica in due passaggi</h1>
+    <p class="text-sm text-ink-soft">Inserisci il codice a 6 cifre della tua app di autenticazione.</p>
+    {error && <p role="alert" class="text-bordeaux-700 bg-bordeaux-50 rounded-lg p-3 text-sm">{error}</p>}
+    <label class="grid gap-1 text-sm font-medium">Codice<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" required class="min-h-11 rounded-lg border border-line px-3 tracking-widest text-center text-lg" /></label>
+    <button class="btn btn-primary">Verifica</button>
+  </form>
+</Admin>

@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import CartView from '../components/react/CartView.tsx';
+
+export const prerender = false;
+---
+<Base title="Carrello" description="Il tuo carrello Lattai Ponticorvo." noindex>
+  <SiteHeader />
+  <main id="main" class="container-x py-12">
+    <h1 class="text-4xl mb-8">Il tuo carrello</h1>
+    <CartView client:load />
+  </main>
+  <SiteFooter />
+</Base>

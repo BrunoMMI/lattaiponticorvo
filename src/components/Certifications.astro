@@ -1,0 +1,17 @@
+---
+// Certificazioni dichiarate nel vecchio sito. [Il titolare deve confermare quali mantenere e l'uso dei marchi.]
+const items = [
+  { t: 'Mozzarella di Bufala Campana DOP', d: 'Denominazione di origine protetta: le caratteristiche del prodotto dipendono essenzialmente dal territorio.' },
+  { t: 'Certificazione Halal', d: 'Requisito doganale per esportare prodotti alimentari in alcuni paesi islamici.' },
+  { t: 'BRC', d: 'Standard di sicurezza alimentare riconosciuto a livello internazionale.' },
+];
+---
+<section aria-labelledby="cert" class="grid gap-6 md:grid-cols-[auto_1fr] md:items-center">
+  <img src="/brand/cert-bufala.svg" alt="Marchio Mozzarella di Bufala Campana" width="120" height="120" loading="lazy" class="mx-auto size-28" />
+  <div>
+    <h2 id="cert" class="text-2xl">Bontà certificate</h2>
+    <ul class="mt-3 grid gap-3 sm:grid-cols-3">
+      {items.map((i) => <li class="rounded-lg bg-white p-4 shadow-soft"><p class="font-semibold">{i.t}</p><p class="mt-1 text-sm text-ink-soft text-left">{i.d}</p></li>)}
+    </ul>
+  </div>
+</section>

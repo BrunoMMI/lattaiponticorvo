@@ -1,0 +1,119 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import ProductCard from '../components/ProductCard.astro';
+import { business as b, siteUrl } from '../lib/site';
+import { shopProducts } from '../lib/shop';
+import { contentAll } from '../lib/settings';
+import LoopVideo from '../components/LoopVideo.astro';
+import Values from '../components/Values.astro';
+import Certifications from '../components/Certifications.astro';
+import { mediaAttrs } from '../lib/media';
+import { photos, photoAttrs, pic, videos } from '../lib/site-media';
+
+export const prerender = false;
+const cms = await contentAll();
+const prodPhotos = [pic('prod-vasca-mani'), pic('prod-mozzarelle-mano'), pic('prod-film-logo')];
+const featured = await shopProducts({ featured: true, limit: 6 });
+Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+
+const dow = { Mo: 'Monday', Tu: 'Tuesday', We: 'Wednesday', Th: 'Thursday', Fr: 'Friday', Sa: 'Saturday', Su: 'Sunday' } as const;
+const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${b.address.street}, ${b.address.zip} ${b.address.city} ${b.address.province}`)}`;
+const ld = [
+  { '@context': 'https://schema.org', '@type': 'WebSite', '@id': `${siteUrl}/#website`, name: b.name, url: siteUrl, inLanguage: 'it-IT', publisher: { '@id': `${siteUrl}/#azienda` },
+    potentialAction: { '@type': 'SearchAction', target: { '@type': 'EntryPoint', urlTemplate: `${siteUrl}/shop?q={search_term_string}` }, 'query-input': 'required name=search_term_string' } },
+  {
+    '@context': 'https://schema.org', '@type': ['Store', 'FoodEstablishment'], '@id': `${siteUrl}/#azienda`, name: b.name, legalName: b.legalName,
+    url: siteUrl, telephone: b.phoneTel, email: b.email, foundingDate: '1968', vatID: `IT${b.vat}`, logo: `${siteUrl}/brand/logo.png`, image: `${siteUrl}/brand/logo.png`,
+    address: { '@type': 'PostalAddress', streetAddress: b.address.street, postalCode: b.address.zip, addressLocality: b.address.city, addressRegion: b.address.province, addressCountry: 'IT' },
+    openingHoursSpecification: b.hours.filter((h) => h.days.length).map((h) => ({ '@type': 'OpeningHoursSpecification', dayOfWeek: h.days.map((d) => dow[d as keyof typeof dow]), opens: h.opens, closes: h.closes })),
+    description: 'Caseificio artigianale ad Alvignano (CE), casari dal 1968: mozzarella di bufala campana DOP, latticini freschi e frozen, punto vendita e locale con menù.',
+    slogan: b.tagline, hasMap: maps, areaServed: { '@type': 'Country', name: 'Italia' }, servesCuisine: 'Italiana',
+    knowsAbout: ['Mozzarella di Bufala Campana DOP', 'Latticini', 'Caseificio artigianale', 'Fiordilatte', 'Burrata', 'Provola affumicata'],
+    hasMenu: `${siteUrl}/menu`, sameAs: Object.values(b.social),
+  },
+];
+---
+<Base title={cms['seo.home.title']} description={cms['seo.home.description']} jsonLd={ld}>
+  <SiteHeader />
+  <main id="main">
+    <section class="relative isolate grid min-h-[82vh] items-end overflow-hidden text-white md:items-center" aria-label="Presentazione">
+      <LoopVideo src={videos.hero.src} poster={videos.hero.poster} class="absolute inset-0 -z-10" label="il video" />
+      <div class="absolute inset-0 -z-[5] bg-gradient-to-t from-black/85 via-black/55 to-black/35" aria-hidden="true"></div>
+      <div class="container-x py-20 reveal">
+        <p class="font-semibold uppercase tracking-wide text-sm text-bordeaux-100">{cms['home.eyebrow']}</p>
+        <h1 class="mt-3 max-w-3xl text-4xl md:text-6xl">{cms['home.title']}</h1>
+        <p class="mt-5 max-w-prose text-lg text-white [text-shadow:0_1px_8px_rgb(0_0_0/0.6)]">{cms['home.subtitle']}</p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="/shop" class="btn btn-primary">Scopri i prodotti</a>
+          <a href="/menu" class="btn border border-white/70 text-white hover:bg-white/15">Consulta il menù</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-crema py-16" aria-labelledby="storia">
+      <div class="container-x grid gap-8 md:grid-cols-2 md:items-center">
+        <img {...photoAttrs(photos.paretePiccola, '(min-width: 768px) 560px, 100vw')} loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover shadow-soft" />
+        <div>
+          <h2 id="storia" class="text-3xl md:text-4xl">La nostra storia</h2>
+          <p class="mt-4 text-ink-soft">{cms['home.story']}</p>
+          <p class="mt-6 flex flex-wrap gap-3"><a class="btn btn-primary" href="/chi-siamo">Leggi la storia</a><a class="btn btn-ghost" href="/il-caseificio">Il caseificio</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="container-x py-14" aria-label="I nostri punti di forza"><Values /></section>
+
+    <section class="bg-ink py-16 text-latte" aria-labelledby="dal-latte">
+      <div class="container-x">
+        <h2 id="dal-latte" class="text-3xl md:text-4xl">Dal latte alla mozzarella</h2>
+        <p class="mt-3 max-w-2xl text-latte/80">Filtrato, pastorizzato a 72 °C, coagulato, filato e mozzato: ogni passaggio avviene nel nostro laboratorio, con cura e attenzione, come da tradizione.</p>
+        <ul class="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Foto della lavorazione">
+          {prodPhotos.map((ph) => <li><img {...photoAttrs(ph, '(min-width: 640px) 33vw, 100vw')} loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover" /></li>)}
+        </ul>
+        <p class="mt-8"><a class="btn btn-primary" href="/produzione">Scopri come lavoriamo</a></p>
+      </div>
+    </section>
+
+    {featured.length > 0 && (
+      <section class="container-x py-16" aria-labelledby="prodotti">
+        <h2 id="prodotti" class="text-3xl md:text-4xl">I nostri prodotti</h2>
+        <ul class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{featured.map((p) => <ProductCard p={p} />)}</ul>
+        <p class="mt-8 text-center"><a class="btn btn-ghost" href="/shop">Tutto lo shop</a></p>
+      </section>
+    )}
+
+    <section class="container-x py-16 grid gap-8 md:grid-cols-2 md:items-center" aria-labelledby="menu">
+      <img src="/media/menu/bro08354.webp" alt="Caprese con pomodoro, mozzarella e rucola" width="1067" height="1600" loading="lazy" class="order-last md:order-first aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover" />
+      <div>
+        <h2 id="menu" class="text-3xl md:text-4xl">Il menù del locale</h2>
+        <p class="mt-4 text-ink-soft">{cms['home.menu']}</p>
+        <p class="mt-6"><a class="btn btn-primary" href="/menu">Apri il menù</a></p>
+      </div>
+    </section>
+
+    <section class="container-x py-16"><Certifications /></section>
+
+    <section class="bg-ink text-latte py-16" aria-labelledby="trovarci">
+      <div class="container-x grid gap-8 md:grid-cols-2">
+        <div>
+          <h2 id="trovarci" class="text-3xl md:text-4xl">Vieni a trovarci</h2>
+          <address class="not-italic mt-4 text-latte/90">{b.address.street}<br />{b.address.zip} {b.address.city} ({b.address.province})</address>
+          <ul class="mt-4 text-latte/90">{b.hours.map((h) => <li>{h.label}: <strong>{h.value}</strong></li>)}</ul>
+          <p class="mt-4"><a class="underline" href={`tel:${b.phoneTel}`}>{b.phone}</a> · <a class="underline" href={`mailto:${b.email}`}>{b.email}</a></p>
+          <p class="mt-6 flex flex-wrap gap-3"><a class="btn btn-primary" href={maps} target="_blank" rel="noopener">Indicazioni stradali</a><a class="btn border border-latte/50 text-latte hover:bg-white/10" href="/contatti">Contatti</a></p>
+        </div>
+        <div class="grid gap-6 content-start">
+        <img {...photoAttrs(photos.ingresso, '(min-width: 768px) 560px, 100vw')} loading="lazy" decoding="async" class="aspect-[4/3] w-full rounded-[var(--radius-card)] object-cover" />
+        <ul class="flex flex-wrap gap-5 text-lg">
+          <li><a class="underline" href={b.social.instagram} target="_blank" rel="noopener">Instagram</a></li>
+          <li><a class="underline" href={b.social.facebook} target="_blank" rel="noopener">Facebook</a></li>
+          <li><a class="underline" href={b.social.tiktok} target="_blank" rel="noopener">TikTok</a></li>
+        </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+  <SiteFooter />
+</Base>

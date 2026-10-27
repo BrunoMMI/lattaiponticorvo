@@ -1,0 +1,16 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import Checkout from '../components/react/Checkout.tsx';
+
+export const prerender = false;
+---
+<Base title="Checkout" description="Completa il tuo ordine Lattai Ponticorvo." noindex>
+  <SiteHeader />
+  <main id="main" class="container-x py-12">
+    <h1 class="text-4xl mb-8">Completa l’ordine</h1>
+    <Checkout client:load />
+  </main>
+  <SiteFooter />
+</Base>

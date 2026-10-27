@@ -1,0 +1,43 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { countUsers, hashPassword, passwordProblem, createSession, audit } from '../../lib/auth';
+import { tooMany } from '../../lib/ratelimit';
+import { timingSafeEqual } from 'node:crypto';
+
+export const prerender = false;
+// Il setup esiste solo finché non c'è alcun utente e richiede ADMIN_SETUP_TOKEN (variabile d'ambiente):
+// così nessuno può rivendicare l'admin di un sito appena pubblicato.
+if ((await countUsers()) > 0) return Astro.redirect('/admin/login');
+const expected = process.env.ADMIN_SETUP_TOKEN ?? import.meta.env.ADMIN_SETUP_TOKEN ?? '';
+let error = '';
+if (!expected) error = 'Imposta ADMIN_SETUP_TOKEN nel file .env e riavvia il server per creare il primo amministratore.';
+else if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const token = String(f.get('token') ?? ''), name = String(f.get('name') ?? '').trim();
+  const email = String(f.get('email') ?? '').trim().toLowerCase(), pw = String(f.get('password') ?? '');
+  const a = Buffer.from(token), b = Buffer.from(expected);
+  const problem = passwordProblem(pw);
+  if (tooMany(`setup:${Astro.clientAddress}`, 5)) error = 'Troppi tentativi.';
+  else if (a.length !== b.length || !timingSafeEqual(a, b)) error = 'Codice di setup non valido.';
+  else if (!name || !/^\S+@\S+\.\S+$/.test(email)) error = 'Nome o email non validi.';
+  else if (problem) error = problem;
+  else {
+    const [u] = await (await getDb()).insert(schema.users).values({ name, email, passwordHash: await hashPassword(pw), role: 'owner' }).returning();
+    await audit(u.id, 'setup.first_admin');
+    await createSession(Astro.cookies, u.id, false);
+    return Astro.redirect('/admin/sicurezza');
+  }
+}
+---
+<Admin title="Primo amministratore" bare>
+  <form method="post" class="w-full max-w-sm bg-white rounded-[var(--radius-card)] shadow-soft p-6 grid gap-4">
+    <h1 class="text-2xl text-center">Crea il primo amministratore</h1>
+    {error && <p role="alert" class="text-bordeaux-700 bg-bordeaux-50 rounded-lg p-3 text-sm">{error}</p>}
+    <label class="grid gap-1 text-sm font-medium">Codice di setup<input name="token" type="password" required class="min-h-11 rounded-lg border border-line px-3" /></label>
+    <label class="grid gap-1 text-sm font-medium">Nome<input name="name" required class="min-h-11 rounded-lg border border-line px-3" /></label>
+    <label class="grid gap-1 text-sm font-medium">Email<input name="email" type="email" required autocomplete="username" class="min-h-11 rounded-lg border border-line px-3" /></label>
+    <label class="grid gap-1 text-sm font-medium">Password (min. 12 caratteri)<input name="password" type="password" minlength="12" required autocomplete="new-password" class="min-h-11 rounded-lg border border-line px-3" /></label>
+    <button class="btn btn-primary">Crea account</button>
+  </form>
+</Admin>

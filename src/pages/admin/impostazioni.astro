@@ -1,0 +1,81 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { audit } from '../../lib/auth';
+import { applyBusiness, businessSchema, currentBusinessSettings, invalidateSettingsCache, refreshBusiness, vatRates } from '../../lib/settings';
+
+export const prerender = false;
+const user = Astro.locals.user!;
+if (user.role === 'staff') return new Response('Non hai i permessi per questa pagina.', { status: 403 });
+await refreshBusiness();
+let flash = '', error = '';
+let b = currentBusinessSettings();
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const db = await getDb();
+  try {
+    if (f.get('act') === 'vat') {
+      const rates = [...new Set(String(f.get('rates') ?? '').split(/[,;\s]+/).filter(Boolean).map((r) => Number(r.replace(',', '.'))))];
+      if (!rates.length || rates.some((r) => !Number.isFinite(r) || r < 0 || r > 30)) throw new Error('Inserisci aliquote tra 0 e 30, separate da virgola (es. 4, 10, 22).');
+      await db.insert(schema.settings).values({ key: 'vatRates', value: rates.sort((x, y) => x - y) }).onConflictDoUpdate({ target: schema.settings.key, set: { value: rates, updatedAt: new Date() } });
+      await audit(user.id, 'settings.vat', undefined, undefined, { rates });
+      flash = 'Aliquote IVA salvate.';
+    } else {
+      const parsed = businessSchema.safeParse(Object.fromEntries([...f.entries()].filter(([, v]) => typeof v === 'string')));
+      if (!parsed.success) throw new Error(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(' · '));
+      await db.insert(schema.settings).values({ key: 'business', value: parsed.data }).onConflictDoUpdate({ target: schema.settings.key, set: { value: parsed.data, updatedAt: new Date() } });
+      applyBusiness(parsed.data);
+      await audit(user.id, 'settings.business');
+      flash = 'Dati aziendali salvati.';
+    }
+    invalidateSettingsCache();
+  } catch (e) { error = e instanceof Error ? e.message : 'Salvataggio non riuscito.'; }
+  b = currentBusinessSettings();
+}
+const rates = await vatRates();
+const field = 'min-h-11 w-full rounded-lg border border-line bg-white px-3 font-normal';
+const lbl = 'grid gap-1 text-sm font-medium';
+---
+<Admin title="Impostazioni">
+  <h1 class="text-3xl mb-6">Impostazioni</h1>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+
+  <form method="post" class="grid gap-6 max-w-3xl">
+    <fieldset class="grid gap-4 rounded-[var(--radius-card)] bg-white p-5 sm:grid-cols-2"><legend class="font-display text-xl px-1">Dati dell’attività</legend>
+      <label class={lbl + ' sm:col-span-2'}>Ragione sociale<input class={field} name="legalName" value={b.legalName} required /></label>
+      <label class={lbl}>Partita IVA<input class={field} name="vat" value={b.vat} required inputmode="numeric" pattern="\d{11}" /></label>
+      <label class={lbl}>Telefono<input class={field} name="phone" value={b.phone} required /></label>
+      <label class={lbl + ' sm:col-span-2'}>Email<input class={field} type="email" name="email" value={b.email} required /></label>
+    </fieldset>
+    <fieldset class="grid gap-4 rounded-[var(--radius-card)] bg-white p-5 sm:grid-cols-6"><legend class="font-display text-xl px-1">Indirizzo</legend>
+      <label class={lbl + ' sm:col-span-6'}>Via<input class={field} name="street" value={b.street} required /></label>
+      <label class={lbl + ' sm:col-span-2'}>CAP<input class={field} name="zip" value={b.zip} required pattern="\d{5}" /></label>
+      <label class={lbl + ' sm:col-span-3'}>Città<input class={field} name="city" value={b.city} required /></label>
+      <label class={lbl}>Prov.<input class={field} name="province" value={b.province} required maxlength="2" /></label>
+    </fieldset>
+    <fieldset class="grid gap-4 rounded-[var(--radius-card)] bg-white p-5 sm:grid-cols-2"><legend class="font-display text-xl px-1">Orari</legend>
+      <label class={lbl}>Lunedì–Sabato: apre<input class={field} type="time" name="weekOpen" value={b.weekOpen} required /></label>
+      <label class={lbl}>Lunedì–Sabato: chiude<input class={field} type="time" name="weekClose" value={b.weekClose} required /></label>
+      <label class={lbl}>Domenica: apre (vuoto = chiuso)<input class={field} type="time" name="sunOpen" value={b.sunOpen} /></label>
+      <label class={lbl}>Domenica: chiude<input class={field} type="time" name="sunClose" value={b.sunClose} /></label>
+    </fieldset>
+    <fieldset class="grid gap-4 rounded-[var(--radius-card)] bg-white p-5"><legend class="font-display text-xl px-1">Social (vuoto = nascosto)</legend>
+      <label class={lbl}>Instagram<input class={field} type="url" name="instagram" value={b.instagram} /></label>
+      <label class={lbl}>Facebook<input class={field} type="url" name="facebook" value={b.facebook} /></label>
+      <label class={lbl}>TikTok<input class={field} type="url" name="tiktok" value={b.tiktok} /></label>
+    </fieldset>
+    <button class="btn btn-primary justify-self-start">Salva dati aziendali</button>
+  </form>
+
+  <form method="post" class="mt-8 grid gap-3 max-w-3xl rounded-[var(--radius-card)] bg-white p-5">
+    <input type="hidden" name="act" value="vat" />
+    <h2 class="font-display text-xl">Aliquote IVA</h2>
+    <label class={lbl}>Aliquote disponibili nei prodotti (%), separate da virgola<input class={field} name="rates" value={rates.join(', ')} /></label>
+    <p class="text-xs text-ink-soft">I prezzi dello shop sono sempre IVA inclusa. [Da confermare con il commercialista le aliquote per ogni prodotto.]</p>
+    <button class="btn btn-ghost justify-self-start">Salva aliquote</button>
+  </form>
+
+  <p class="mt-8 text-sm text-ink-soft max-w-3xl">Le impostazioni di <a class="underline" href="/admin/spedizioni">spedizioni</a> e <a class="underline" href="/admin/promozioni">promozioni</a> sono nelle rispettive pagine. Le chiavi di Stripe, Resend e del database non si inseriscono qui: restano nelle variabili d’ambiente del server, per sicurezza.</p>
+</Admin>

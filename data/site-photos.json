@@ -1,0 +1,227 @@
+{
+ "prod-latte-controllo": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un casaro controlla il latte che entra nella caldaia di lavorazione"
+ },
+ "prod-latte-controllo-2": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un casaro con lo strumento di controllo accanto alla caldaia del latte"
+ },
+ "prod-vasca-mani": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Le mani di un casaro tra le mozzarelle appena formate nella vasca"
+ },
+ "prod-vasca-mani-2": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un casaro lavora le mozzarelle nella vasca con il latticello"
+ },
+ "prod-mozzarelle-mano": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un casaro tiene tra le mani una mozzarella appena mozzata"
+ },
+ "prod-mozzatura": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Le mozzarelle scivolano lungo la linea di confezionamento"
+ },
+ "prod-confezionatrice": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Mozzarelle in ingresso alla macchina confezionatrice"
+ },
+ "prod-film-logo": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il film con il logo Lattai Ponticorvo avvolge i prodotti nella confezionatrice"
+ },
+ "prod-confezionamento": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Mozzarelle avvolte nel film con il logo Lattai Ponticorvo"
+ },
+ "prod-confezionate": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un operatore tra le mozzarelle già confezionate sul nastro"
+ },
+ "prod-confezionate-2": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Mozzarelle confezionate pronte per il controllo"
+ },
+ "prod-linea": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il personale alla linea di confezionamento del caseificio"
+ },
+ "prod-laboratorio": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il laboratorio di lavorazione con le attrezzature in acciaio"
+ },
+ "prod-laboratorio-2": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il laboratorio con le vasche e le macchine, pulito e luminoso"
+ },
+ "prod-pannello": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un operatore al pannello di comando della filatrice"
+ },
+ "prod-filatura": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un operatore lavora alla filatura accanto al quadro di comando"
+ },
+ "prod-formatura": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un operatore dispone i formaggi nelle vasche di raffreddamento"
+ },
+ "prod-cassette": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Cassette con i formaggi appena formati nella vasca"
+ },
+ "prod-vasche": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un operatore alle vasche di rassodamento"
+ },
+ "prod-laboratorio-3": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Operatori al lavoro nel laboratorio di produzione"
+ },
+ "prod-sala": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Veduta della sala di produzione con pastorizzatori e filatrici"
+ },
+ "prod-bufala-dop": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Targhetta Bufala DOP su una macchina del laboratorio"
+ },
+ "prod-sala-vuota": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "La sala di lavorazione vista da un angolo, con la filatrice in primo piano"
+ },
+ "log-bancale-ingresso": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un operatore sposta un bancale di scatole verso la cella"
+ },
+ "log-bancali": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Bancali di scatole con il logo Lattai Ponticorvo pronti alla spedizione"
+ },
+ "log-preparazione": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un operatore prepara i bancali per la spedizione"
+ },
+ "log-bancale": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Un bancale di prodotti confezionati davanti alla linea di confezionamento"
+ },
+ "log-furgone-carico": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il furgone refrigerato in carico con i bancali di prodotti"
+ },
+ "log-autobotte": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "L’autobotte che porta il latte al caseificio"
+ },
+ "log-furgone": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il furgone Lattai Ponticorvo davanti al caseificio con le montagne sullo sfondo"
+ },
+ "bufale-1": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Una bufala si affaccia dalla mangiatoia"
+ },
+ "bufale-2": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Una bufala con la marca auricolare gialla guarda in camera"
+ },
+ "bufale-3": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Una bufala nella stalla con il fieno davanti"
+ },
+ "bufale-4": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il muso di una bufala vicino alla mangiatoia"
+ },
+ "bufale-5": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Una bufala con il ciuffo chiaro nella stalla"
+ },
+ "bufale-6": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Una bufala mangia il fieno nella stalla luminosa"
+ },
+ "bufale-7": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Una bufala all’aperto in primo piano"
+ },
+ "bufale-8": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Bufale nella stalla, una guarda in camera"
+ },
+ "sede-giorno": {
+  "w": 1280,
+  "h": 853,
+  "alt": "La sede di Lattai Ponticorvo con il piazzale e il cielo nuvoloso"
+ },
+ "sede-sera": {
+  "w": 1280,
+  "h": 853,
+  "alt": "La facciata illuminata di sera con l’insegna Lattai Ponticorvo"
+ },
+ "pv-interno": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "L’interno del punto vendita con il banco, l’affettatrice e gli scaffali"
+ },
+ "pv-affettatrice": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Scaffali di prodotti tipici e affettatrice rossa nel punto vendita"
+ },
+ "pv-banco": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "Il banco del punto vendita con la vetrina dei prodotti"
+ },
+ "pv-cassa": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "La cassa del punto vendita con la macchina dello yogurt naturale"
+ },
+ "pv-vetrina": {
+  "w": 1600,
+  "h": 1067,
+  "alt": "La vetrina dei dolci e dei prodotti accanto alla cassa"
+ }
+}

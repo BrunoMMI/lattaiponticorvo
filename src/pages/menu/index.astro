@@ -1,0 +1,86 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getMenu, getMenuNotes } from '../../lib/menu';
+import { readSession } from '../../lib/auth';
+import { business as b, siteUrl } from '../../lib/site';
+import { mediaAttrs } from '../../lib/media';
+
+export const prerender = false;
+// Anteprima (?preview=1): mostra anche le bozze, solo a un admin con sessione completa.
+const sess = Astro.url.searchParams.has('preview') ? await readSession(Astro.cookies) : null;
+const preview = !!sess && !sess.session.pendingTotp;
+const items = await getMenu({ includeDraft: preview });
+const menuNotes = await getMenuNotes();
+const ld = [{ '@context': 'https://schema.org', '@type': 'Menu', name: 'Menù di Lattai Ponticorvo', url: `${siteUrl}/menu`, inLanguage: 'it-IT', mainEntityOfPage: `${siteUrl}/menu`, provider: { '@id': `${siteUrl}/#azienda` },
+  hasMenuSection: [{ '@type': 'MenuSection', name: 'Il nostro menù', hasMenuItem: items.map((it) => ({ '@type': 'MenuItem', name: it.name, ...(it.shortDescription && { description: it.shortDescription }) })) }] }];
+Astro.response.headers.set('Cache-Control', preview ? 'no-store' : 'public, max-age=60, stale-while-revalidate=300');
+---
+<Base noindex={preview} jsonLd={ld} title="Menù digitale" description="Il menù del locale Lattai Ponticorvo: panini, taglieri, caprese e altre specialità con mozzarella di bufala e salumi.">
+  <header class="bg-bordeaux-600 text-white text-center py-6 px-4">
+    <p class="mb-4 text-left"><a href="/" class="inline-block rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white !no-underline hover:bg-white/25">← Torna al sito</a></p>
+    <img src="/brand/logo.svg" alt="Lattai Ponticorvo, casari dal 1968" width="180" height="86" class="mx-auto h-20 w-auto bg-latte rounded-2xl p-2" />
+    <h1 class="text-3xl mt-4">Il nostro menù</h1>
+  </header>
+  <main id="main" class="container-x py-8 max-w-6xl">
+    <aside class="mx-auto max-w-2xl rounded-[var(--radius-card)] border border-bordeaux-300 bg-bordeaux-50 p-4 flex gap-3" aria-label="Informazione sui prezzi">
+      <span aria-hidden="true" class="text-2xl">⚖️</span>
+      <p class="font-semibold text-bordeaux-700">{menuNotes.headline}</p>
+    </aside>
+    <div class="mx-auto mt-6 max-w-2xl">
+      <label for="q" class="sr-only">Cerca nel menù</label>
+      <input id="q" type="search" placeholder="Cerca nel menù…" class="w-full min-h-12 rounded-full border border-line bg-white px-5" autocomplete="off" />
+    </div>
+    <ul id="list" class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((it, i) => (
+        <li class="reveal flex flex-col overflow-hidden rounded-[var(--radius-card)] bg-white shadow-soft" style={`animation-delay:${Math.min(i, 8) * 40}ms`} data-name={`${it.name} ${it.shortDescription}`.toLowerCase()}>
+          {it.images[0]
+            ? <button type="button" class="zoom group block aspect-square w-full overflow-hidden bg-crema" data-full={`/media/${it.images[0].path}?v=2`} data-alt={it.images[0].alt || it.name} aria-label={`Ingrandisci la foto: ${it.name}`}>
+                <img {...mediaAttrs(it.images[0].path, '(min-width: 1152px) 370px, (min-width: 640px) 45vw, 100vw')} alt={it.images[0].alt} width={it.images[0].w ?? 800} height={it.images[0].h ?? 600} class="h-full w-full object-cover object-[50%_45%] transition-transform duration-500 group-hover:scale-[1.03]" loading={i < 2 ? 'eager' : 'lazy'} decoding="async" />
+              </button>
+            : <div class="photo-slot aspect-square" role="img" aria-label={`Foto di ${it.name}, in arrivo`}>Foto in arrivo</div>}
+          <div class="flex flex-1 flex-col p-5">
+            <h2 class="text-xl">{it.name}</h2>
+            {it.shortDescription && <p class="text-ink-soft mt-1">{it.shortDescription}</p>}
+            {it.allergens.length > 0 && <p class="text-sm mt-2"><strong>Allergeni:</strong> {it.allergens.join(', ')}</p>}
+            {!it.menuAvailable && <p class="text-sm mt-2 text-bordeaux-600 font-semibold">Momentaneamente non disponibile</p>}
+            <p class="mt-auto pt-3 text-sm text-bordeaux-700">{menuNotes.headline}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+    <p id="empty" hidden class="text-center text-ink-soft mt-8">Nessun piatto trovato.</p>
+    <p class="text-sm text-ink-soft mt-10 text-center">{menuNotes.footnote}</p>
+    <p class="text-sm text-ink-soft mt-4 text-center">Per informazioni su allergeni e ingredienti chiedi al nostro personale · {b.phone}</p>
+    <p class="mt-8 text-center"><a href="/" class="btn btn-ghost !no-underline">← Torna al sito</a></p>
+  </main>
+  <dialog id="lb" class="m-auto max-h-[94vh] max-w-[96vw] bg-transparent p-0 backdrop:bg-black/85">
+    <div class="relative">
+      <img id="lb-img" alt="" class="max-h-[90vh] max-w-[94vw] rounded-lg object-contain" />
+      <button type="button" id="lb-close" class="absolute right-2 top-2 rounded-full bg-black/60 px-3 py-1.5 text-white hover:bg-black/80" aria-label="Chiudi">✕</button>
+      <button type="button" id="lb-prev" class="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white hover:bg-black/80" aria-label="Foto precedente">‹</button>
+      <button type="button" id="lb-next" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white hover:bg-black/80" aria-label="Foto successiva">›</button>
+    </div>
+  </dialog>
+  <script is:inline>
+    const q = document.getElementById('q'), rows = [...document.querySelectorAll('#list li')], empty = document.getElementById('empty');
+    q.addEventListener('input', () => {
+      const t = q.value.trim().toLowerCase(); let n = 0;
+      rows.forEach((r) => { const ok = !t || r.dataset.name.includes(t); r.hidden = !ok; n += ok; });
+      empty.hidden = n > 0;
+    });
+    // Ingrandimento foto (scorre tra le foto dei piatti visibili)
+    const lb = document.getElementById('lb'), lbImg = document.getElementById('lb-img');
+    let cur = 0;
+    const zooms = () => [...document.querySelectorAll('#list li:not([hidden]) .zoom')];
+    const show = (i) => { const z = zooms(); if (!z.length) return; cur = (i + z.length) % z.length; lbImg.src = z[cur].dataset.full; lbImg.alt = z[cur].dataset.alt; };
+    document.getElementById('list').addEventListener('click', (e) => {
+      const b = e.target.closest('.zoom'); if (!b) return;
+      show(zooms().indexOf(b)); lb.showModal();
+    });
+    document.getElementById('lb-close').addEventListener('click', () => lb.close());
+    document.getElementById('lb-prev').addEventListener('click', () => show(cur - 1));
+    document.getElementById('lb-next').addEventListener('click', () => show(cur + 1));
+    lb.addEventListener('click', (e) => { if (e.target === lb) lb.close(); });
+    lb.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') show(cur - 1); else if (e.key === 'ArrowRight') show(cur + 1); });
+  </script>
+</Base>

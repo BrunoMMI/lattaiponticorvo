@@ -1,0 +1,21 @@
+---
+---
+<div id="consent" hidden role="dialog" aria-modal="false" aria-labelledby="consent-t" class="fixed inset-x-3 bottom-3 z-50 mx-auto max-w-2xl rounded-[var(--radius-card)] bg-white p-5 shadow-soft border border-line">
+  <p id="consent-t" class="font-display text-lg">Cookie e privacy</p>
+  <p class="mt-1 text-sm text-ink-soft">Questo sito usa solo strumenti tecnici, necessari al funzionamento (carrello e sicurezza). Nessun cookie di profilazione o di terze parti. <a class="underline" href="/cookie">Maggiori informazioni</a></p>
+  <div class="mt-3 flex flex-wrap gap-2"><button type="button" class="btn btn-primary" id="consent-ok">Ho capito</button></div>
+</div>
+<script is:inline>
+  (function () {
+    var KEY = 'lp_consent', box = document.getElementById('consent');
+    function saved() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+    function show() { box.hidden = false; document.getElementById('consent-ok').focus({ preventScroll: true }); }
+    // Registra la scelta con data e versione: serve a dimostrarla e a richiederla di nuovo se cambiano le regole.
+    document.getElementById('consent-ok').addEventListener('click', function () {
+      try { localStorage.setItem(KEY, JSON.stringify({ v: 1, ts: new Date().toISOString(), necessary: true, analytics: false, marketing: false })); } catch (e) {}
+      box.hidden = true;
+    });
+    document.addEventListener('click', function (e) { if (e.target.closest('[data-open-consent]')) show(); });
+    if (!saved()) show();
+  })();
+</script>

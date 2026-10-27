@@ -1,0 +1,44 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { eq, sql } from 'drizzle-orm';
+import { countUsers, createSession, verifyPassword, audit, DUMMY_HASH } from '../../lib/auth';
+import { tooMany } from '../../lib/ratelimit';
+
+export const prerender = false;
+if (Astro.locals.user) return Astro.redirect('/admin');
+if ((await countUsers()) === 0) return Astro.redirect('/admin/setup');
+
+let error = '';
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const email = String(f.get('email') ?? '').trim().toLowerCase();
+  const password = String(f.get('password') ?? '');
+  const ip = Astro.clientAddress ?? 'x';
+  if (tooMany(`login:${ip}`) || tooMany(`login:${email}`)) {
+    error = 'Troppi tentativi. Riprova tra qualche minuto.';
+  } else {
+    const db = await getDb();
+    const [u] = await db.select().from(schema.users).where(eq(sql`lower(${schema.users.email})`, email));
+    // Verifica sempre un hash, anche se l'utente non esiste: tempi di risposta uniformi.
+    const ok = await verifyPassword(u?.passwordHash ?? DUMMY_HASH, password);
+    if (u && ok) {
+      await createSession(Astro.cookies, u.id, u.totpEnabled);
+      if (!u.totpEnabled) await audit(u.id, 'login');
+      return Astro.redirect(u.totpEnabled ? '/admin/2fa' : '/admin');
+    }
+    error = 'Email o password non corretti.';
+  }
+}
+---
+<Admin title="Accesso" bare>
+  <form method="post" class="w-full max-w-sm bg-white rounded-[var(--radius-card)] shadow-soft p-6 grid gap-4">
+    <img src="/brand/logo.svg" alt="Lattai Ponticorvo" class="h-14 w-auto mx-auto" />
+    <h1 class="text-2xl text-center">Area riservata</h1>
+    {error && <p role="alert" class="text-bordeaux-700 bg-bordeaux-50 rounded-lg p-3 text-sm">{error}</p>}
+    <label class="grid gap-1 text-sm font-medium">Email<input name="email" type="email" required autocomplete="username" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+    <label class="grid gap-1 text-sm font-medium">Password<input name="password" type="password" required autocomplete="current-password" class="min-h-11 rounded-lg border border-line px-3 font-normal" /></label>
+    <button class="btn btn-primary">Accedi</button>
+    <a href="/admin/password-dimenticata" class="text-sm underline text-center">Password dimenticata?</a>
+  </form>
+</Admin>

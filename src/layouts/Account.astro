@@ -1,0 +1,21 @@
+---
+import Base from './Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+interface Props { title: string; narrow?: boolean }
+const { title, narrow = false } = Astro.props;
+const customer = Astro.locals.customer;
+---
+<Base title={title} description="Area personale Lattai Ponticorvo." noindex>
+  <SiteHeader />
+  <main id="main" class:list={['container-x py-12', narrow && 'max-w-md']}>
+    {customer && (
+      <nav aria-label="Area personale" class="mb-8 flex flex-wrap items-center gap-4 text-sm">
+        <a class="underline" href="/account">I miei ordini</a><a class="underline" href="/account/dati">I miei dati</a>
+        <form method="post" action="/account/esci" class="ml-auto"><button class="underline">Esci</button></form>
+      </nav>
+    )}
+    <slot />
+  </main>
+  <SiteFooter />
+</Base>

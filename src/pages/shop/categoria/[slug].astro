@@ -1,0 +1,29 @@
+---
+import Base from '../../../layouts/Base.astro';
+import SiteHeader from '../../../components/SiteHeader.astro';
+import SiteFooter from '../../../components/SiteFooter.astro';
+import ProductCard from '../../../components/ProductCard.astro';
+import { categoryWithChildren, shopProducts } from '../../../lib/shop';
+import { siteUrl } from '../../../lib/site';
+
+export const prerender = false;
+const found = await categoryWithChildren(Astro.params.slug ?? '');
+if (!found) return new Response('Categoria non trovata', { status: 404 });
+const products = await shopProducts({ categoryIds: found.ids });
+const { cat, children } = found;
+const crumbs = [{ name: 'Home', url: siteUrl }, { name: 'Shop', url: `${siteUrl}/shop` }, { name: cat.name, url: `${siteUrl}/shop/categoria/${cat.slug}` }];
+const ld = [{ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: c.url })) }];
+Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+---
+<Base title={cat.name} description={`${cat.name} del caseificio Lattai Ponticorvo: prodotti artigianali freschi, acquistabili online.`} jsonLd={ld}>
+  <SiteHeader />
+  <main id="main" class="container-x py-12">
+    <nav aria-label="Briciole di pane" class="text-sm text-ink-soft mb-4"><a href="/">Home</a> › <a href="/shop">Shop</a> › <span aria-current="page">{cat.name}</span></nav>
+    <h1 class="text-4xl">{cat.name}</h1>
+    {children.length > 0 && <ul class="mt-4 flex flex-wrap gap-2">{children.map((c) => <li><a href={`/shop/categoria/${c.slug}`} class="rounded-full border border-line bg-white px-4 py-2 text-sm hover:border-bordeaux-600">{c.name}</a></li>)}</ul>}
+    {products.length === 0
+      ? <p class="mt-10 text-ink-soft">Al momento non ci sono prodotti in questa categoria. <a class="underline" href="/shop">Torna allo shop</a></p>
+      : <ul class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{products.map((p, i) => <ProductCard p={p} eager={i < 3} level={2} />)}</ul>}
+  </main>
+  <SiteFooter />
+</Base>

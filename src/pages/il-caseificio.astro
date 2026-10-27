@@ -1,0 +1,33 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import Gallery from '../components/Gallery.astro';
+import LoopVideo from '../components/LoopVideo.astro';
+import { pic, videos } from '../lib/site-media';
+---
+<PageShell title="Il nostro caseificio" path="/il-caseificio" description="Una struttura di 1.500 mq dove macchinari di ultima generazione incontrano i gesti tradizionali dei nostri artigiani, ad Alvignano (CE).">
+  <p class="text-ink-soft font-display text-xl">Mani esperte e macchine moderne</p>
+  <p>Una struttura di 1.500 mq, al cui interno avviene l’incontro perfetto tra macchinari di ultima generazione e i gesti tradizionali delle mani esperte dei nostri artigiani.</p>
+  <h2>All’interno dell’azienda disponiamo di</h2>
+  <ul>
+    <li>Laboratorio di analisi per il controllo costante dei prodotti;</li>
+    <li>Celle di abbattimento (-40° C);</li>
+    <li>Locale per l’affumicatura;</li>
+    <li>Cella per la stagionatura;</li>
+    <li>Zona filtro (ingresso ed uscita).</li>
+  </ul>
+  <p>Pastorizzatori polivalenti, filatrici, formatrici, vasche di rassodamento, macchine per la realizzazione dei packaging: ogni processo avviene all’interno della nostra azienda con cura e attenzione per far sì che il prodotto finito risulti conforme ai nostri standard qualitativi.</p>
+  <p>Ampi spazi di lavoro e massima igiene sono aspetti a cui teniamo particolarmente e che ci permettono di fare la differenza.</p>
+  <h2>I nostri punti di forza</h2>
+  <ul>
+    <li>Artigianalità del prodotto con latte di qualità</li>
+    <li>Prodotti frozen preservando la freschezza</li>
+    <li>Confezioni personalizzabili</li>
+    <li>Possibilità di co-marketing</li>
+  </ul>
+  <h2>Dall’alto: il caseificio nel suo territorio</h2>
+  <LoopVideo src={videos.territorio.src} poster={videos.territorio.poster} class="relative isolate mx-auto aspect-[9/16] w-full max-w-sm overflow-hidden rounded-[var(--radius-card)] bg-ink" label="il video" />
+  <h2>Dentro il laboratorio</h2>
+  <Gallery label="Foto del laboratorio" items={[pic('prod-sala'), pic('prod-filatura'), pic('prod-vasca-mani'), pic('prod-confezionate'), pic('prod-laboratorio-2'), pic('prod-bufala-dop')]} />
+  <p>Vuoi vedere come nasce la mozzarella, passo dopo passo? <a href="/produzione">Scopri la produzione</a>. Accanto al caseificio trovi il nostro <a href="/punto-vendita">punto vendita</a>.</p>
+  <p><a class="btn btn-primary !text-white !no-underline" href="/shop">Scopri i prodotti</a></p>
+</PageShell>

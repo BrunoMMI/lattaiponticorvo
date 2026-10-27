@@ -1,0 +1,39 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getDb, schema } from '../../../db';
+import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
+import { euro } from '../../../lib/pricing';
+import { SOLD } from '../../../lib/stats';
+
+export const prerender = false;
+const db = await getDb();
+const { customers: C, orders: O } = schema;
+const q = (Astro.url.searchParams.get('q') ?? '').trim().replace(/[%_\\]/g, '');
+const sold = sql`${O.status} in ('paid','preparing','shipped','delivered')`;
+const rows = await db.select({
+  c: C, orders: sql<number>`count(${O.id}) filter (where ${sold})::int`,
+  spent: sql<number>`coalesce(sum(${O.totalCents}) filter (where ${sold}),0)::int`, last: sql<Date | null>`max(${O.createdAt}) filter (where ${sold})`,
+}).from(C).leftJoin(O, eq(O.customerId, C.id))
+  .where(and(isNull(C.deletedAt), q ? or(ilike(C.email, `%${q}%`), ilike(C.name, `%${q}%`), ilike(C.phone, `%${q}%`)) : undefined))
+  .groupBy(C.id).orderBy(desc(sql`coalesce(sum(${O.totalCents}) filter (where ${sold}),0)`)).limit(300);
+void SOLD;
+---
+<Admin title="Clienti">
+  <h1 class="text-3xl mb-6">Clienti</h1>
+  <form method="get" class="flex gap-2 mb-4">
+    <label class="sr-only" for="q">Cerca</label>
+    <input id="q" name="q" value={q} placeholder="Nome, email o telefono" class="min-h-11 rounded-lg border border-line px-3 bg-white grow max-w-sm" />
+    <button class="btn btn-ghost">Cerca</button>
+  </form>
+  <div class="bg-white rounded-[var(--radius-card)] overflow-x-auto">
+    <table class="w-full text-sm"><caption class="sr-only">Elenco clienti</caption>
+      <thead class="text-left text-ink-soft"><tr><th scope="col" class="p-3">Cliente</th><th scope="col" class="p-3">Telefono</th><th scope="col" class="p-3 text-right">Ordini</th><th scope="col" class="p-3 text-right">Totale speso</th><th scope="col" class="p-3">Ultimo ordine</th></tr></thead>
+      <tbody>{rows.length === 0 ? <tr><td colspan="5" class="p-6 text-center text-ink-soft">Nessun cliente.</td></tr> : rows.map(({ c, orders, spent, last }) => (
+        <tr class="border-t border-line">
+          <td class="p-3"><a class="underline text-bordeaux-700 font-medium" href={`/admin/clienti/${c.id}`}>{c.name || '—'}</a><div class="text-xs text-ink-soft">{c.email}{c.passwordHash ? ' · con account' : ''}</div></td>
+          <td class="p-3">{c.phone ?? '—'}</td><td class="p-3 text-right">{orders}</td><td class="p-3 text-right">{euro(spent)}</td>
+          <td class="p-3">{last ? new Date(last).toLocaleDateString('it-IT') : '—'}</td>
+        </tr>))}</tbody>
+    </table>
+  </div>
+</Admin>

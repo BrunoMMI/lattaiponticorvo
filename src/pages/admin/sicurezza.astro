@@ -1,0 +1,55 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import QRCode from 'qrcode';
+import { getDb, schema } from '../../db';
+import { eq } from 'drizzle-orm';
+import { newTotpSecret, totp, checkTotp, audit } from '../../lib/auth';
+
+export const prerender = false;
+const user = Astro.locals.user!;
+const db = await getDb();
+let msg = '';
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = f.get('act');
+  const [cur] = await db.select().from(schema.users).where(eq(schema.users.id, user.id));
+  if (act === 'start') {
+    await db.update(schema.users).set({ totpSecret: newTotpSecret(), totpEnabled: false }).where(eq(schema.users.id, user.id));
+  } else if (act === 'confirm') {
+    if (cur.totpSecret && checkTotp(cur.totpSecret, cur.email, String(f.get('code') ?? ''))) {
+      await db.update(schema.users).set({ totpEnabled: true }).where(eq(schema.users.id, user.id));
+      await audit(user.id, '2fa.enabled');
+      return Astro.redirect('/admin/sicurezza?ok=1');
+    }
+    msg = 'Codice non valido.';
+  } else if (act === 'disable') {
+    await db.update(schema.users).set({ totpEnabled: false, totpSecret: null }).where(eq(schema.users.id, user.id));
+    await audit(user.id, '2fa.disabled');
+    return Astro.redirect('/admin/sicurezza');
+  }
+}
+const [fresh] = await db.select().from(schema.users).where(eq(schema.users.id, user.id));
+const enabled = fresh.totpEnabled;
+const pending = !enabled && !!fresh.totpSecret;
+const qr = pending ? await QRCode.toDataURL(totp(fresh.totpSecret!, fresh.email).toString(), { width: 220, margin: 1 }) : '';
+---
+<Admin title="Sicurezza">
+  <h1 class="text-3xl mb-6">Sicurezza account</h1>
+  <section class="bg-white rounded-[var(--radius-card)] p-6 max-w-xl grid gap-4">
+    <h2 class="text-xl">Autenticazione a due fattori</h2>
+    {Astro.url.searchParams.get('ok') && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3">2FA attivata.</p>}
+    {msg && <p role="alert" class="text-bordeaux-700">{msg}</p>}
+    {enabled && <>
+      <p>Attiva. Ti verrà chiesto un codice a ogni accesso.</p>
+      <form method="post"><input type="hidden" name="act" value="disable" /><button class="btn btn-ghost">Disattiva</button></form>
+    </>}
+    {pending && <form method="post" class="grid gap-3">
+      <p>Scansiona il QR con Google Authenticator, Authy o simili, poi inserisci il codice.</p>
+      <img src={qr} alt="QR code per l'app di autenticazione" width="220" height="220" />
+      <input type="hidden" name="act" value="confirm" />
+      <label class="grid gap-1 text-sm font-medium">Codice<input name="code" inputmode="numeric" required class="min-h-11 rounded-lg border border-line px-3" /></label>
+      <button class="btn btn-primary">Conferma e attiva</button>
+    </form>}
+    {!enabled && !pending && <form method="post"><input type="hidden" name="act" value="start" /><button class="btn btn-primary">Attiva la 2FA</button></form>}
+  </section>
+</Admin>

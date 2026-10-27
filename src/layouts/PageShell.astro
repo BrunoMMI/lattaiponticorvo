@@ -1,0 +1,29 @@
+---
+import Base from './Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+import { siteUrl } from '../lib/site';
+
+interface Props { title: string; description: string; path: string; draftLegal?: boolean; jsonLd?: object[]; wide?: boolean; ogImage?: string; pageType?: 'WebPage' | 'AboutPage' | 'ContactPage' | 'CollectionPage' }
+const { title, description, path, draftLegal = false, jsonLd = [], wide = false, ogImage, pageType = 'WebPage' } = Astro.props;
+const crumbs = [{ name: 'Home', url: siteUrl }, { name: title, url: `${siteUrl}${path}` }];
+const pageUrl = `${siteUrl}${path}`;
+const webPage = { '@context': 'https://schema.org', '@type': pageType, '@id': `${pageUrl}#webpage`, url: pageUrl, name: title, description, inLanguage: 'it-IT',
+  isPartOf: { '@type': 'WebSite', '@id': `${siteUrl}/#website` }, about: { '@id': `${siteUrl}/#azienda` }, breadcrumb: { '@id': `${pageUrl}#breadcrumb` } };
+const ld = [webPage, { '@context': 'https://schema.org', '@type': 'BreadcrumbList', '@id': `${pageUrl}#breadcrumb`, itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: c.url })) }, ...jsonLd];
+---
+<Base title={title} description={description} jsonLd={ld} ogImage={ogImage}>
+  <SiteHeader />
+  <main id="main" class:list={['container-x py-12', wide ? 'max-w-6xl' : 'max-w-3xl']}>
+    <nav aria-label="Briciole di pane" class="text-sm text-ink-soft mb-4"><a href="/">Home</a> › <span aria-current="page">{title}</span></nav>
+    <h1 class="text-4xl md:text-5xl">{title}</h1>
+    {draftLegal && (
+      <p role="note" class="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <strong>Bozza da revisionare.</strong> Questo testo è una base di lavoro e non ha valore legale definitivo finché non viene verificato da un professionista.
+        Rimuovi questo avviso da <code>draftLegal</code> nella pagina quando il testo è approvato.
+      </p>
+    )}
+    <div class="prose-lp mt-8"><slot /></div>
+  </main>
+  <SiteFooter />
+</Base>

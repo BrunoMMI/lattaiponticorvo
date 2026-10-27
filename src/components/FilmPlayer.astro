@@ -1,0 +1,33 @@
+---
+interface Props { src: string; poster: string; title: string; class?: string }
+const { src, poster, title, class: cls = '' } = Astro.props;
+---
+<!-- Il video non esiste nella pagina finché l'utente non lo avvia: nessun download anticipato, nessun peso sul caricamento. -->
+<figure class:list={['film', cls]} data-src={src} data-title={title}>
+  <div class="relative aspect-video overflow-hidden rounded-[var(--radius-card)] bg-ink shadow-soft" data-stage>
+    <img src={poster} alt="" width="1600" height="900" loading="lazy" decoding="async" class="h-full w-full object-cover" />
+    <button type="button" data-play class="absolute inset-0 grid place-items-center bg-black/25 text-white transition-colors hover:bg-black/35 focus-visible:outline-offset-[-6px]" aria-label={`Guarda il video: ${title}`}>
+      <span class="grid size-20 place-items-center rounded-full bg-bordeaux-600 shadow-soft" aria-hidden="true">
+        <svg viewBox="0 0 24 24" class="ml-1 size-9" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+      </span>
+    </button>
+  </div>
+  <figcaption class="mt-2 text-sm text-ink-soft">{title}</figcaption>
+  <noscript><p class="mt-2 text-sm"><a class="underline" href={src}>Guarda il video</a></p></noscript>
+</figure>
+<script>
+  document.querySelectorAll<HTMLElement>('figure.film').forEach((fig) => {
+    const btn = fig.querySelector<HTMLButtonElement>('[data-play]');
+    const stage = fig.querySelector<HTMLElement>('[data-stage]');
+    btn?.addEventListener('click', () => {
+      if (!stage) return;
+      const v = document.createElement('video');
+      v.controls = true; v.autoplay = true; v.playsInline = true; v.preload = 'auto';
+      v.src = fig.dataset.src!; v.setAttribute('aria-label', fig.dataset.title ?? 'Video');
+      v.className = 'h-full w-full bg-black';
+      stage.replaceChildren(v);
+      v.focus();
+      v.play().catch(() => {});
+    });
+  });
+</script>

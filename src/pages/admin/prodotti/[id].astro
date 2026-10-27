@@ -1,0 +1,253 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getDb, schema } from '../../../db';
+import { and, asc, eq, sql } from 'drizzle-orm';
+import { audit } from '../../../lib/auth';
+import { slugify } from '../../../lib/slug';
+import { ALLERGENS } from '../../../lib/allergens';
+import { centsToInput, parseEuro, parseStock, stockToInput, unitLabels } from '../../../lib/format';
+import { detachPhoto, saveImage } from '../../../lib/uploads';
+import { vatRates } from '../../../lib/settings';
+
+export const prerender = false;
+const { id } = Astro.params;
+if (!id || !/^[0-9a-f-]{36}$/.test(id)) return new Response('Not found', { status: 404 });
+const db = await getDb();
+const { items: T, itemVariants: V, itemImages: I, media: M } = schema;
+const user = Astro.locals.user!;
+const [exists] = await db.select().from(T).where(eq(T.id, id));
+if (!exists) return new Response('Prodotto non trovato', { status: 404 });
+
+let flash = Astro.url.searchParams.get('ok') ? 'Salvato.' : '';
+let error = '';
+const txt = (f: FormData, k: string, max = 4000) => String(f.get(k) ?? '').trim().slice(0, max);
+const int = (f: FormData, k: string, d = 0) => { const n = parseInt(String(f.get(k) ?? ''), 10); return Number.isFinite(n) && n >= 0 ? n : d; };
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = txt(f, 'act', 30);
+  try {
+    if (act === 'save') {
+      const unit = txt(f, 'sellUnit', 20) as keyof typeof unitLabels;
+      if (!(unit in unitLabels)) throw new Error('Unità di vendita non valida.');
+      const price = parseEuro(f.get('price')), sale = parseEuro(f.get('salePrice'));
+      if (sale != null && (price == null || sale >= price)) throw new Error('Il prezzo promozionale deve essere inferiore al prezzo normale.');
+      const published = f.has('published');
+      if (published && price == null) throw new Error('Per pubblicare il prodotto serve un prezzo.');
+      let slug = slugify(txt(f, 'slug', 100) || txt(f, 'name', 160));
+      if (!slug) throw new Error('Nome o indirizzo web non valido.');
+      const [dup] = await db.select({ id: T.id }).from(T).where(and(eq(T.slug, slug), sql`${T.id} <> ${id}`));
+      if (dup) throw new Error('Esiste già un prodotto con questo indirizzo web (slug).');
+      const nutrition = Object.fromEntries(['energiaKcal', 'grassi', 'saturi', 'carboidrati', 'zuccheri', 'proteine', 'sale'].map((k) => [k, txt(f, `n_${k}`, 20)]).filter(([, v]) => v));
+      const stock = parseStock(f.get('stock'), unit);
+      const delta = stock - exists.stockQty;
+      await db.transaction(async (tx) => {
+        await tx.update(T).set({
+          name: txt(f, 'name', 160), slug, sku: txt(f, 'sku', 60) || null, sellUnit: unit, priceCents: price, salePriceCents: sale,
+          vatRate: txt(f, 'vat', 6) || '4.00', shopCategoryId: txt(f, 'category', 40) || null,
+          shortDescription: txt(f, 'shortDescription', 300), description: txt(f, 'description'), ingredients: txt(f, 'ingredients'),
+          allergens: f.getAll('allergens').map(String).filter((a) => (ALLERGENS as readonly string[]).includes(a)),
+          storage: txt(f, 'storage', 400) || null, expiresOn: txt(f, 'expiresOn', 10) || null, nutrition: Object.keys(nutrition).length ? nutrition : null,
+          variableWeight: f.has('variableWeight'), weightStepGrams: Math.max(10, int(f, 'weightStep', 100)),
+          lowStockThreshold: parseStock(f.get('lowStock'), unit), stockQty: stock,
+          published, featured: f.has('featured'), seoTitle: txt(f, 'seoTitle', 70) || null, seoDescription: txt(f, 'seoDescription', 170) || null, updatedAt: new Date(),
+        }).where(eq(T.id, id));
+        // Ogni modifica manuale della giacenza lascia traccia nello storico movimenti.
+        if (delta !== 0) await tx.insert(schema.stockMovements).values({ itemId: id, delta, reason: 'adjustment', userId: user.id, note: 'Modifica dalla scheda prodotto' });
+      });
+      const file = f.get('photo');
+      if (file instanceof File && file.size > 0) {
+        const m = await saveImage(file, 'shop', txt(f, 'name', 160));
+        const [{ n }] = await db.select({ n: sql<number>`coalesce(max(sort_order),-1)::int` }).from(I).where(eq(I.itemId, id));
+        await db.insert(I).values({ itemId: id, mediaId: m.id, sortOrder: n + 1 });
+      }
+      await audit(user.id, 'product.update', 'item', id);
+      return Astro.redirect(`/admin/prodotti/${id}?ok=1`);
+    } else if (act === 'addvariant') {
+      const label = txt(f, 'vlabel', 80);
+      if (!label) throw new Error('Dai un nome al formato (es. "500 g").');
+      const w = int(f, 'vweight', 0) || null;
+      if (exists.sellUnit === 'kg' && !w) throw new Error('Per un prodotto al kg il formato deve avere un peso in grammi.');
+      await db.insert(V).values({ itemId: id, label, weightGrams: w, priceCents: parseEuro(f.get('vprice')), stockQty: parseStock(f.get('vstock'), 'piece'), sortOrder: int(f, 'vsort', 0) });
+      flash = 'Formato aggiunto.';
+    } else if (act === 'savevariant') {
+      const vid = txt(f, 'vid', 40);
+      const [cur] = await db.select().from(V).where(and(eq(V.id, vid), eq(V.itemId, id)));
+      if (!cur) throw new Error('Formato non trovato.');
+      const label = txt(f, 'vlabel', 80);
+      if (!label) throw new Error('Il nome del formato non può essere vuoto.');
+      const w = int(f, 'vweight', 0) || null;
+      if (exists.sellUnit === 'kg' && !w) throw new Error('Per un prodotto al kg il formato deve avere un peso in grammi.');
+      const stock = exists.sellUnit === 'kg' ? cur.stockQty : parseStock(f.get('vstock'), 'piece');
+      await db.transaction(async (tx) => {
+        await tx.update(V).set({ label, weightGrams: w, priceCents: parseEuro(f.get('vprice')), stockQty: stock }).where(eq(V.id, vid));
+        if (stock !== cur.stockQty) await tx.insert(schema.stockMovements).values({ itemId: id, variantId: vid, delta: stock - cur.stockQty, reason: 'adjustment', userId: user.id, note: `Modifica formato "${label}"` });
+      });
+      await audit(user.id, 'product.variant.update', 'item', id, { vid });
+      flash = 'Formato aggiornato.';
+    } else if (act === 'delvariant') {
+      await db.delete(V).where(and(eq(V.id, txt(f, 'vid', 40)), eq(V.itemId, id)));
+      flash = 'Formato rimosso.';
+    } else if (act.startsWith('cover:') || act.startsWith('delphoto:')) {
+      const [a, mid] = act.split(':');
+      if (a === 'delphoto') await detachPhoto(id, mid);
+      else await db.transaction(async (tx) => {
+        await tx.update(I).set({ sortOrder: sql`sort_order + 1` }).where(eq(I.itemId, id));
+        await tx.update(I).set({ sortOrder: 0 }).where(and(eq(I.itemId, id), eq(I.mediaId, mid)));
+      });
+    } else if (act === 'duplicate') {
+      const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = exists;
+      const [copy] = await db.insert(T).values({ ...rest, name: `${exists.name} (copia)`, slug: `${exists.slug}-copia-${Date.now().toString(36)}`, sku: null, published: false, stockQty: 0, archivedAt: null }).returning();
+      const vs = await db.select().from(V).where(eq(V.itemId, id));
+      for (const v of vs) { const { id: _vid, ...vr } = v; await db.insert(V).values({ ...vr, itemId: copy.id, stockQty: 0 }); }
+      const imgs = await db.select().from(I).where(eq(I.itemId, id));
+      for (const im of imgs) await db.insert(I).values({ itemId: copy.id, mediaId: im.mediaId, sortOrder: im.sortOrder });
+      await audit(user.id, 'product.duplicate', 'item', copy.id, { from: id });
+      return Astro.redirect(`/admin/prodotti/${copy.id}`);
+    } else if (act === 'archive' || act === 'restore') {
+      // Archiviare non cancella nulla: lo storico degli ordini resta intatto.
+      await db.update(T).set(act === 'archive' ? { archivedAt: new Date(), published: false } : { archivedAt: null }).where(eq(T.id, id));
+      await audit(user.id, `product.${act}`, 'item', id);
+      return Astro.redirect('/admin/prodotti');
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : 'Operazione non riuscita.';
+  }
+}
+
+const [it] = await db.select().from(T).where(eq(T.id, id));
+const variants = await db.select().from(V).where(eq(V.itemId, id)).orderBy(asc(V.sortOrder), asc(V.weightGrams));
+const photos = await db.select({ mediaId: M.id, path: M.path, alt: M.alt }).from(I).innerJoin(M, eq(M.id, I.mediaId)).where(eq(I.itemId, id)).orderBy(asc(I.sortOrder));
+const cats = await db.select().from(schema.categories).where(eq(schema.categories.scope, 'shop')).orderBy(asc(schema.categories.name));
+const rates = await vatRates();
+const nut = (it.nutrition ?? {}) as Record<string, string>;
+const field = 'min-h-11 rounded-lg border border-line px-3 font-normal w-full bg-white';
+const lbl = 'grid gap-1 text-sm font-medium';
+const kg = it.sellUnit === 'kg';
+---
+<Admin title={it.name}>
+  <p class="text-sm mb-2"><a class="underline" href="/admin/prodotti">← Tutti i prodotti</a></p>
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <h1 class="text-3xl">{it.name}</h1>
+    {it.published && !it.archivedAt && <a class="btn btn-ghost" href={`/shop/${it.slug}`} target="_blank" rel="noopener">Vedi sul sito</a>}
+  </div>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+
+  <form method="post" enctype="multipart/form-data" class="grid gap-6 max-w-3xl">
+    <button class="sr-only" name="act" value="save" tabindex="-1" aria-hidden="true">Salva</button><!-- pulsante predefinito: Invio nei campi salva -->
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-4">
+      <h2 class="text-xl">Informazioni</h2>
+      <label class={lbl}>Nome<input class={field} name="name" value={it.name} required /></label>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class={lbl}>Indirizzo web (slug)<input class={field} name="slug" value={it.slug} /></label>
+        <label class={lbl}>SKU<input class={field} name="sku" value={it.sku ?? ''} /></label>
+      </div>
+      <label class={lbl}>Categoria
+        <select class={field} name="category"><option value="">— nessuna —</option>{cats.map((c) => <option value={c.id} selected={c.id === it.shopCategoryId}>{c.parentId ? '— ' : ''}{c.name}</option>)}</select>
+      </label>
+      <label class={lbl}>Descrizione breve<input class={field} name="shortDescription" value={it.shortDescription} maxlength="300" /></label>
+      <label class={lbl}>Descrizione completa<textarea class={field + ' py-2'} name="description" rows="5">{it.description}</textarea></label>
+    </section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-4">
+      <h2 class="text-xl">Prezzo e vendita</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class={lbl}>Come si vende
+          <select class={field} name="sellUnit">{(Object.entries(unitLabels)).map(([k, v]) => <option value={k} selected={k === it.sellUnit}>{v}</option>)}</select>
+        </label>
+        <label class={lbl}>IVA
+          <select class={field} name="vat">{[...new Set([...rates, Number(it.vatRate)])].sort((a, b) => a - b).map((v) => <option value={v.toFixed(2)} selected={v === Number(it.vatRate)}>{v}%</option>)}</select>
+        </label>
+        <label class={lbl}>Prezzo (€{kg ? ' al kg' : ''}) — IVA inclusa<input class={field} name="price" inputmode="decimal" value={centsToInput(it.priceCents)} placeholder="es. 12,50" /></label>
+        <label class={lbl}>Prezzo promozionale (€) — facoltativo<input class={field} name="salePrice" inputmode="decimal" value={centsToInput(it.salePriceCents)} /></label>
+      </div>
+      {kg && <label class={lbl}>Peso selezionabile a passi di (grammi)<input class={field} name="weightStep" type="number" min="10" step="10" value={it.weightStepGrams} /></label>}
+      <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="variableWeight" checked={it.variableWeight} class="mt-1" />
+        <span><strong>Peso variabile</strong>: il peso reale viene confermato dopo la preparazione. Al checkout si autorizza l’importo ma si addebita solo il peso effettivo (mai di più).</span></label>
+    </section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-4">
+      <h2 class="text-xl">Magazzino</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class={lbl}>Giacenza ({kg ? 'kg' : 'pezzi'})<input class={field} name="stock" inputmode="decimal" value={stockToInput(it.stockQty, it.sellUnit)} /></label>
+        <label class={lbl}>Avvisa sotto ({kg ? 'kg' : 'pezzi'})<input class={field} name="lowStock" inputmode="decimal" value={stockToInput(it.lowStockThreshold, it.sellUnit)} /></label>
+      </div>
+      <p class="text-xs text-ink-soft">Ogni modifica alla giacenza viene registrata nello storico movimenti. Per carichi e scarichi con nota usa la pagina Magazzino.</p>
+    </section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-4">
+      <h2 class="text-xl">Informazioni alimentari</h2>
+      <fieldset><legend class="text-sm font-medium mb-2">Allergeni presenti</legend>
+        <div class="grid gap-2 sm:grid-cols-2">{ALLERGENS.map((a) => <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="allergens" value={a} checked={it.allergens.includes(a)} /> {a}</label>)}</div></fieldset>
+      <label class={lbl}>Ingredienti<textarea class={field + ' py-2'} name="ingredients" rows="2">{it.ingredients}</textarea></label>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <label class={lbl}>Conservazione<input class={field} name="storage" value={it.storage ?? ''} placeholder="es. Conservare in frigorifero 0-4 °C" /></label>
+        <label class={lbl}>Scadenza (se gestita)<input class={field} type="date" name="expiresOn" value={it.expiresOn ?? ''} /></label>
+      </div>
+      <fieldset><legend class="text-sm font-medium mb-2">Valori nutrizionali per 100 g (facoltativi)</legend>
+        <div class="grid gap-3 grid-cols-2 sm:grid-cols-4">
+          {[['energiaKcal', 'Energia (kcal)'], ['grassi', 'Grassi (g)'], ['saturi', 'di cui saturi (g)'], ['carboidrati', 'Carboidrati (g)'], ['zuccheri', 'di cui zuccheri (g)'], ['proteine', 'Proteine (g)'], ['sale', 'Sale (g)']].map(([k, l]) =>
+            <label class={lbl}>{l}<input class={field} name={`n_${k}`} value={nut[k] ?? ''} inputmode="decimal" /></label>)}
+        </div></fieldset>
+    </section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-4">
+      <h2 class="text-xl">Foto</h2>
+      {photos.length > 0 && <ul class="flex flex-wrap gap-3">{photos.map((p, n) => (
+        <li class="w-28"><img src={`/media/${p.path}`} alt={p.alt} width="112" height="112" loading="lazy" class="size-28 object-cover rounded-lg" />
+          <div class="text-xs mt-1 flex gap-2">{n === 0 ? <strong>Copertina</strong> : <button name="act" value={`cover:${p.mediaId}`} formnovalidate class="underline">Copertina</button>}
+            <button name="act" value={`delphoto:${p.mediaId}`} formnovalidate class="underline text-bordeaux-700">Elimina</button></div></li>))}</ul>}
+      <label class={lbl}>Aggiungi foto (JPG, PNG, WebP)<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" class="text-sm font-normal" /></label>
+    </section>
+
+    <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-4">
+      <h2 class="text-xl">Pubblicazione e SEO</h2>
+      <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <label class="flex items-center gap-2"><input type="checkbox" name="published" checked={it.published} /> Pubblicato sullo shop</label>
+        <label class="flex items-center gap-2"><input type="checkbox" name="featured" checked={it.featured} /> In evidenza in home</label>
+      </div>
+      <label class={lbl}>Titolo SEO (max 70)<input class={field} name="seoTitle" value={it.seoTitle ?? ''} maxlength="70" /></label>
+      <label class={lbl}>Descrizione SEO (max 170)<textarea class={field + ' py-2'} name="seoDescription" rows="2" maxlength="170">{it.seoDescription ?? ''}</textarea></label>
+    </section>
+
+    <div class="flex flex-wrap gap-2 sticky bottom-3">
+      <button name="act" value="save" class="btn btn-primary shadow-soft">Salva modifiche</button>
+    </div>
+  </form>
+
+  <section class="bg-white rounded-[var(--radius-card)] p-5 grid gap-4 max-w-3xl mt-6">
+    <h2 class="text-xl">Formati / varianti</h2>
+    <p class="text-sm text-ink-soft">{kg ? 'Per i prodotti al kg i formati sono pesi preconfezionati (es. 500 g): il prezzo si calcola dal prezzo al kg, salvo prezzo indicato. La giacenza è quella del prodotto.' : 'Ogni formato può avere prezzo e giacenza propri.'}</p>
+    {variants.length > 0 && <ul class="grid gap-3">{variants.map((v) => (
+      <li class="rounded-lg border border-line p-3">
+        <form method="post" class="grid items-end gap-3 sm:grid-cols-6">
+          <input type="hidden" name="vid" value={v.id} />
+          <label class={lbl + ' sm:col-span-2'}>Nome<input class={field} name="vlabel" value={v.label} required /></label>
+          <label class={lbl}>Peso (g)<input class={field} name="vweight" type="number" min="1" value={v.weightGrams ?? ''} /></label>
+          <label class={lbl}>Prezzo (€)<input class={field} name="vprice" inputmode="decimal" value={centsToInput(v.priceCents)} placeholder="auto" /></label>
+          {!kg ? <label class={lbl}>Giacenza<input class={field} name="vstock" inputmode="numeric" value={v.stockQty} /></label> : <span class="text-xs text-ink-soft">giacenza del prodotto</span>}
+          <span class="flex gap-3 sm:col-span-1">
+            <button class="btn btn-ghost !min-h-10" name="act" value="savevariant">Salva</button>
+            <button class="text-sm underline text-bordeaux-700" name="act" value="delvariant" formnovalidate>Rimuovi</button>
+          </span>
+        </form>
+      </li>))}</ul>}
+    <form method="post" class="grid gap-3 sm:grid-cols-5 items-end">
+      <input type="hidden" name="act" value="addvariant" />
+      <label class={lbl + ' sm:col-span-2'}>Nome formato<input class={field} name="vlabel" placeholder="es. 500 g" required /></label>
+      <label class={lbl}>Peso (g)<input class={field} name="vweight" type="number" min="1" /></label>
+      <label class={lbl}>Prezzo (€)<input class={field} name="vprice" inputmode="decimal" placeholder="auto" /></label>
+      {!kg && <label class={lbl}>Giacenza<input class={field} name="vstock" inputmode="numeric" value="0" /></label>}
+      <button class="btn btn-ghost sm:col-span-5 justify-self-start">Aggiungi formato</button>
+    </form>
+  </section>
+
+  <section class="max-w-3xl mt-6 flex flex-wrap gap-2">
+    <form method="post"><input type="hidden" name="act" value="duplicate" /><button class="btn btn-ghost">Duplica prodotto</button></form>
+    {it.archivedAt
+      ? <form method="post"><input type="hidden" name="act" value="restore" /><button class="btn btn-ghost">Ripristina</button></form>
+      : <form method="post"><input type="hidden" name="act" value="archive" /><button class="btn btn-ghost">Archivia (nasconde, mantiene lo storico ordini)</button></form>}
+  </section>
+
+</Admin>

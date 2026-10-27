@@ -1,0 +1,57 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { getDb, schema } from '../../../db';
+import { desc, eq } from 'drizzle-orm';
+import { euro } from '../../../lib/pricing';
+import { STATUS_LABELS } from '../../../lib/order-labels';
+import { anonymizeCustomer, exportCustomerData } from '../../../lib/gdpr';
+import { audit } from '../../../lib/auth';
+import type { Db } from '../../../lib/orders';
+
+export const prerender = false;
+const id = Astro.params.id ?? '';
+if (!/^[0-9a-f-]{36}$/.test(id)) return new Response('Not found', { status: 404 });
+const db = await getDb();
+const user = Astro.locals.user!;
+const [c] = await db.select().from(schema.customers).where(eq(schema.customers.id, id));
+if (!c) return new Response('Cliente non trovato', { status: 404 });
+
+// Richiesta di accesso ai dati (art. 15 GDPR): file JSON da inviare all'interessato
+if (Astro.url.searchParams.get('esporta') === '1') {
+  const data = await exportCustomerData(db as unknown as Db, id);
+  await audit(user.id, 'privacy.export', 'customer', id);
+  return new Response(JSON.stringify(data, null, 2), { headers: { 'Content-Type': 'application/json; charset=utf-8', 'Content-Disposition': `attachment; filename="dati-cliente-${id.slice(0, 8)}.json"`, 'Cache-Control': 'no-store' } });
+}
+let flash = '';
+if (Astro.request.method === 'POST' && String((await Astro.request.formData()).get('act')) === 'anonymize') {
+  if (await anonymizeCustomer(db as unknown as Db, id)) { await audit(user.id, 'privacy.erase', 'customer', id); return Astro.redirect('/admin/clienti'); }
+  flash = 'Il cliente era già stato anonimizzato.';
+}
+const ords = await db.select().from(schema.orders).where(eq(schema.orders.customerId, id)).orderBy(desc(schema.orders.createdAt));
+const addrs = await db.select().from(schema.addresses).where(eq(schema.addresses.customerId, id));
+---
+<Admin title={c.name || c.email}>
+  <p class="text-sm mb-2"><a class="underline" href="/admin/clienti">← Tutti i clienti</a></p>
+  <h1 class="text-3xl mb-1">{c.name || 'Cliente senza nome'}</h1>
+  <p class="text-ink-soft mb-6">{c.email}{c.phone ? ` · ${c.phone}` : ''} · cliente dal {c.createdAt.toLocaleDateString('it-IT')}{c.passwordHash ? ' · con account' : ' · ospite'}{c.deletedAt ? ' · ANONIMIZZATO' : ''}</p>
+  {flash && <p role="status" class="bg-amber-50 rounded-lg p-3 mb-4">{flash}</p>}
+
+  <section class="bg-white rounded-[var(--radius-card)] p-5 max-w-3xl mb-6">
+    <h2 class="text-xl mb-3">Ordini</h2>
+    {ords.length === 0 ? <p class="text-sm text-ink-soft">Nessun ordine.</p> : (
+      <ul class="grid gap-2 text-sm">{ords.map((o) => <li class="flex flex-wrap justify-between gap-2 border-t border-line pt-2 first:border-0 first:pt-0"><a class="underline text-bordeaux-700" href={`/admin/ordini/${o.id}`}>#{o.number}</a><span>{o.createdAt.toLocaleDateString('it-IT')}</span><span>{STATUS_LABELS[o.status]}</span><strong>{euro(o.totalCents)}</strong></li>)}</ul>)}
+    {addrs.length > 0 && <><h3 class="mt-4 font-semibold">Indirizzi salvati</h3><ul class="text-sm">{addrs.map((a) => <li>{a.line1}, {a.zip} {a.city} ({a.province})</li>)}</ul></>}
+  </section>
+
+  {!c.deletedAt && (
+    <section class="bg-white rounded-[var(--radius-card)] p-5 max-w-3xl" aria-labelledby="priv">
+      <h2 id="priv" class="text-xl mb-2">Richieste privacy</h2>
+      <p class="text-sm text-ink-soft mb-3">Per rispondere a una richiesta di accesso o di cancellazione ricevuta dal cliente. Ogni azione viene registrata nel log.</p>
+      <div class="flex flex-wrap gap-2">
+        <a class="btn btn-ghost" href={`/admin/clienti/${c.id}?esporta=1`}>Scarica i dati (JSON)</a>
+        <form method="post" onsubmit="return confirm('Anonimizzare definitivamente questo cliente? L’operazione non è reversibile.')">
+          <input type="hidden" name="act" value="anonymize" /><button class="btn btn-ghost !text-bordeaux-700">Cancella dati personali</button></form>
+      </div>
+    </section>
+  )}
+</Admin>

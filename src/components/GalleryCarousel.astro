@@ -1,0 +1,52 @@
+---
+import { photoAttrs, photoFull, type SitePhoto } from '../lib/site-media';
+interface Props { items: SitePhoto[]; label: string }
+const { items, label } = Astro.props;
+---
+<!-- Galleria a scorrimento orizzontale; il clic su una foto la apre ingrandita in una finestra (dialog) navigabile da tastiera. -->
+<div class="gallery-carousel not-prose relative" role="region" aria-roledescription="carosello" aria-label={label}>
+  <ul class="gc-track flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-3" tabindex="0">
+    {items.map((p, i) => (
+      <li class="shrink-0 snap-start">
+        <button type="button" class="gc-open block overflow-hidden rounded-[var(--radius-card)] shadow-soft" data-index={i} data-full={photoFull(p)} data-alt={p.alt} aria-label={`Ingrandisci la foto: ${p.alt}`}>
+          <img {...photoAttrs(p, '(min-width: 640px) 360px, 80vw')} loading="lazy" decoding="async" class="h-64 w-auto max-w-none object-cover sm:h-80" />
+        </button>
+      </li>
+    ))}
+  </ul>
+  <button type="button" class="gc-prev absolute left-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white backdrop-blur hover:bg-black/80 sm:block" aria-label="Foto precedenti">‹</button>
+  <button type="button" class="gc-next absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white backdrop-blur hover:bg-black/80 sm:block" aria-label="Foto successive">›</button>
+  <dialog class="gc-dialog m-auto max-h-[92vh] max-w-[96vw] rounded-lg bg-transparent p-0 backdrop:bg-black/85">
+    <div class="relative">
+      <img class="gc-big max-h-[88vh] max-w-[94vw] rounded-lg object-contain" alt="" />
+      <button type="button" class="gc-close absolute right-2 top-2 rounded-full bg-black/60 px-3 py-1.5 text-white hover:bg-black/80" aria-label="Chiudi">✕</button>
+      <button type="button" class="gc-dprev absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white hover:bg-black/80" aria-label="Foto precedente">‹</button>
+      <button type="button" class="gc-dnext absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white hover:bg-black/80" aria-label="Foto successiva">›</button>
+    </div>
+  </dialog>
+</div>
+<script>
+  document.querySelectorAll<HTMLElement>('.gallery-carousel').forEach((root) => {
+    const track = root.querySelector<HTMLElement>('.gc-track')!;
+    const dlg = root.querySelector<HTMLDialogElement>('.gc-dialog')!;
+    const big = root.querySelector<HTMLImageElement>('.gc-big')!;
+    const btns = [...root.querySelectorAll<HTMLButtonElement>('.gc-open')];
+    let cur = 0;
+    const step = () => Math.max(track.clientWidth * 0.8, 200);
+    root.querySelector('.gc-prev')!.addEventListener('click', () => track.scrollBy({ left: -step() }));
+    root.querySelector('.gc-next')!.addEventListener('click', () => track.scrollBy({ left: step() }));
+    const show = (i: number) => {
+      cur = (i + btns.length) % btns.length;
+      big.src = btns[cur].dataset.full!; big.alt = btns[cur].dataset.alt ?? '';
+    };
+    btns.forEach((b, i) => b.addEventListener('click', () => { show(i); dlg.showModal(); }));
+    root.querySelector('.gc-close')!.addEventListener('click', () => dlg.close());
+    root.querySelector('.gc-dprev')!.addEventListener('click', () => show(cur - 1));
+    root.querySelector('.gc-dnext')!.addEventListener('click', () => show(cur + 1));
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') show(cur - 1); else if (e.key === 'ArrowRight') show(cur + 1);
+    });
+    dlg.addEventListener('close', () => btns[cur]?.focus());
+  });
+</script>

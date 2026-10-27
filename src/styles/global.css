@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+/* Design system Lattai Ponticorvo — colori estratti dal logo ufficiale (PDF):
+   bordeaux #820024, nero caldo #231F20. Le altre tinte sono derivate dal bordeaux. */
+@theme {
+  --color-bordeaux-50: #fbf3f4;
+  --color-bordeaux-100: #f5e1e5;
+  --color-bordeaux-300: #c97a8c;
+  --color-bordeaux-500: #a3123a;
+  --color-bordeaux-600: #820024;
+  --color-bordeaux-700: #6a001e;
+  --color-bordeaux-900: #3a0010;
+  --color-ink: #231f20;
+  --color-ink-soft: #5b5455;
+  --color-latte: #fbf7f0;
+  --color-crema: #f3ebdd;
+  --color-line: #e6dccb;
+
+  --font-display: 'Fraunces', 'Georgia', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-card: 1.25rem;
+  --shadow-soft: 0 10px 30px -12px rgb(58 0 16 / 0.25);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-latte);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-bordeaux-500);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    min-height: 2.75rem; padding: .65rem 1.4rem; border-radius: 999px;
+    font-weight: 600; transition: background-color .2s, transform .2s, color .2s;
+  }
+  .btn-primary { background: var(--color-bordeaux-600); color: #fff; }
+  .btn-primary:hover { background: var(--color-bordeaux-700); transform: translateY(-1px); }
+  .btn-ghost { border: 1.5px solid var(--color-bordeaux-600); color: var(--color-bordeaux-600); }
+  .btn-ghost:hover { background: var(--color-bordeaux-50); }
+  .container-x { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+  .photo-slot {
+    display: grid; place-items: center; text-align: center;
+    background: repeating-linear-gradient(45deg, var(--color-crema), var(--color-crema) 12px, #efe5d3 12px, #efe5d3 24px);
+    color: var(--color-ink-soft); font-size: .8rem;
+  }
+  .reveal { animation: reveal .6s ease both; }
+  @keyframes reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+}
+
+@layer components {
+  .prose-lp { line-height: 1.75; }
+  .prose-lp > * + * { margin-top: 1rem; }
+  .prose-lp h2 { font-size: 1.6rem; margin-top: 2.25rem; }
+  .prose-lp h3 { font-size: 1.2rem; margin-top: 1.5rem; }
+  .prose-lp ul { list-style: disc; padding-left: 1.4rem; }
+  .prose-lp ol { list-style: decimal; padding-left: 1.4rem; }
+  .prose-lp a { color: var(--color-bordeaux-600); text-decoration: underline; }
+  .prose-lp li + li { margin-top: .35rem; }
+}
+
+@layer components {
+  /* Blocchi dentro il testo che non devono ereditare lo stile "articolo" (liste, link, margini) */
+  .prose-lp .not-prose ul, .prose-lp .not-prose ol { list-style: none; padding-left: 0; }
+  .prose-lp .not-prose li + li { margin-top: 0; }
+  .prose-lp .not-prose > * + * { margin-top: 0; }
+  .prose-lp .not-prose a.btn { text-decoration: none; }
+}
+
+@layer components {
+  /* liste con classe not-prose: nessun pallino né rientro (la classe è sull'elemento stesso) */
+  .prose-lp ul.not-prose, .prose-lp ol.not-prose { list-style: none; padding-left: 0; }
+  .prose-lp ul.not-prose > li + li, .prose-lp ol.not-prose > li + li { margin-top: 0; }
+}
+
+/* ───────── Testo giustificato in tutto il sito pubblico ─────────
+   Il corpo del testo è giustificato con sillabazione automatica (lang="it" sull'<html>), così sugli schermi stretti
+   non si formano "fiumi" di spazi. Restano com'erano: titoli, pulsanti, etichette, didascalie e tutto ciò che ha
+   una classe di allineamento esplicita (text-center, text-left, text-right: le utility vincono su queste regole). */
+@layer base {
+  body.site main p,
+  body.site main dd,
+  body.site main blockquote,
+  body.site main li > p {
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    overflow-wrap: break-word;
+    text-wrap: pretty;
+  }
+  body.site main .prose-lp li {
+    text-align: justify;
+    hyphens: auto;
+    -webkit-hyphens: auto;
+    overflow-wrap: break-word;
+  }
+  body.site main figcaption,
+  body.site main label,
+  body.site main summary,
+  body.site main .btn,
+  body.site main time,
+  body.site main address,
+  body.site main th,
+  body.site main td,
+  body.site main nav,
+  body.site main nav * { text-align: start; hyphens: manual; }
+  body.site main [role='status'], body.site main [role='alert'] { text-align: start; }
+}
+
+/* ───────── Responsive: bersagli di tocco e controlli (WCAG 2.2, 2.5.8: almeno 24 px) ───────── */
+@layer base {
+  input[type='checkbox'], input[type='radio'] { width: 1.5rem; height: 1.5rem; accent-color: var(--color-bordeaux-600); flex-shrink: 0; }
+  nav[aria-label='Briciole di pane'] a { display: inline-block; padding-block: .4rem; margin-block: -.4rem; }
+  footer a, footer button { display: inline-block; padding-block: .3rem; }
+  body.site main p, body.site main dd, body.site main blockquote, body.site main .prose-lp li { hyphenate-limit-chars: 6 3 3; }
+}
+
+@media (max-width: 1023px) {
+  @layer base { footer li > a, footer li > button { padding-block: .8rem; } }
+}
+
+/* Su schermi stretti il testo giustificato crea spazi irregolari tra le parole: allineato a sinistra. */
+@media (max-width: 639px) {
+  @layer base {
+    body.site main p, body.site main dd, body.site main blockquote, body.site main .prose-lp li { text-align: start; }
+  }
+}

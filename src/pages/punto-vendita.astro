@@ -1,0 +1,26 @@
+---
+import PageShell from '../layouts/PageShell.astro';
+import GalleryCarousel from '../components/GalleryCarousel.astro';
+import { business as b } from '../lib/site';
+import { photos, pic } from '../lib/site-media';
+const maps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${b.address.street}, ${b.address.zip} ${b.address.city} ${b.address.province}`)}`;
+---
+<PageShell wide title="Il punto vendita" path="/punto-vendita" ogImage="/media/site/pv-interno.webp"
+  description="Il punto vendita Lattai Ponticorvo ad Alvignano (CE): latticini del caseificio e le migliori scoperte gastronomiche, direttamente dal produttore.">
+  <div class="mx-auto max-w-3xl">
+    <p class="font-display text-xl text-ink-soft">Scopri il vero sapore, direttamente dal produttore.</p>
+    <h2 class="!mt-2">Ogni prodotto ha una storia, ogni viaggio un sapore. Scoprili con noi.</h2>
+    <p>Il nostro punto vendita è la sintesi dei nostri viaggi, delle nostre passioni e delle emozioni che ogni piccolo o grande produttore ci ha donato. Nel nostro tempo libero sovente andiamo a scoprire nuove realtà gastronomiche soprattutto per il nostro piacere.</p>
+    <p>Se il prodotto e il produttore ci hanno veramente conquistato allora quel prodotto, oltre a finire sulla nostra tavola di casa, finisce anche sui banchi, nei frigo e sugli scaffali del nostro punto vendita.</p>
+    <p>Ti invitiamo a visitarci spesso perché le novità sono frequenti come i nostri viaggi alla scoperta del buono.</p>
+  </div>
+  <div class="not-prose mt-8">
+    <GalleryCarousel label="Foto del punto vendita" items={[pic('pv-interno'), photos.banco, pic('pv-cassa'), photos.sala, pic('pv-affettatrice'), photos.scala, photos.yogurt, photos.caffe, pic('pv-vetrina'), photos.panoramica2, pic('sede-sera'), photos.personale]} />
+  </div>
+  <div class="mx-auto mt-10 max-w-3xl rounded-[var(--radius-card)] bg-crema p-6">
+    <h2 class="!mt-0">Vieni a trovarci</h2>
+    <address class="not-italic">{b.address.street}<br />{b.address.zip} {b.address.city} ({b.address.province})</address>
+    <ul class="mt-2">{b.hours.map((h) => <li>{h.label}: <strong>{h.value}</strong></li>)}</ul>
+    <p class="mt-4"><a class="btn btn-primary !text-white !no-underline" href={maps} target="_blank" rel="noopener">Indicazioni stradali</a> <a class="btn btn-ghost !no-underline" href="/menu">Il menù del locale</a></p>
+  </div>
+</PageShell>

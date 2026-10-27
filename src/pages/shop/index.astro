@@ -1,0 +1,45 @@
+---
+import Base from '../../layouts/Base.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import SiteFooter from '../../components/SiteFooter.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import { shopCategories, shopProducts } from '../../lib/shop';
+import { siteUrl } from '../../lib/site';
+
+export const prerender = false;
+const q = (Astro.url.searchParams.get('q') ?? '').trim().slice(0, 60);
+const [cats, products] = await Promise.all([shopCategories(), shopProducts({ q })]);
+const roots = cats.filter((c) => !c.parentId);
+const ld = products.length ? [{ '@context': 'https://schema.org', '@type': 'ItemList', name: 'Prodotti Lattai Ponticorvo', itemListElement: products.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${siteUrl}/shop/${p.slug}`, name: p.name })) }] : [];
+Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+---
+<Base title="Shop" description="I prodotti del caseificio Lattai Ponticorvo: mozzarella di bufala, latticini e specialità casearie artigianali, direttamente a casa tua." noindex={!!q} jsonLd={ld}>
+  <SiteHeader />
+  <main id="main" class="container-x py-12">
+    <nav aria-label="Briciole di pane" class="text-sm text-ink-soft mb-4"><a href="/">Home</a> › <span aria-current="page">Shop</span></nav>
+    <h1 class="text-4xl">Il nostro shop</h1>
+    <p class="mt-2 text-ink-soft max-w-prose">Dal caseificio alla tua tavola: prodotti freschi, lavorati ogni giorno con latte di qualità.</p>
+
+    <form method="get" role="search" class="mt-6 flex gap-2 max-w-md">
+      <label class="sr-only" for="q">Cerca nello shop</label>
+      <input id="q" name="q" value={q} type="search" placeholder="Cerca un prodotto…" class="min-h-11 min-w-0 grow rounded-full border border-line bg-white px-5" />
+      <button class="btn btn-ghost shrink-0">Cerca</button>
+    </form>
+
+    {roots.length > 0 && <ul class="mt-6 flex flex-wrap gap-2" aria-label="Categorie">
+      <li><a href="/shop" aria-current={!q ? 'page' : undefined} class="rounded-full border border-line bg-white px-4 py-2 text-sm aria-[current=page]:bg-bordeaux-600 aria-[current=page]:text-white">Tutti</a></li>
+      {roots.map((c) => <li><a href={`/shop/categoria/${c.slug}`} class="rounded-full border border-line bg-white px-4 py-2 text-sm hover:border-bordeaux-600">{c.name}</a></li>)}
+    </ul>}
+
+    {products.length === 0 ? (
+      <div class="mt-12 rounded-[var(--radius-card)] bg-crema p-10 text-center">
+        <p class="font-display text-2xl">{q ? 'Nessun prodotto trovato.' : 'Il nostro shop online sta per aprire.'}</p>
+        <p class="mt-2 text-ink-soft">{q ? 'Prova con un’altra ricerca.' : 'Nel frattempo, vieni a trovarci in caseificio o consulta il menù del locale.'}</p>
+        <a href="/menu" class="btn btn-primary mt-6">Consulta il menù</a>
+      </div>
+    ) : (
+      <ul class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{products.map((p, i) => <ProductCard p={p} eager={i < 3} level={2} />)}</ul>
+    )}
+  </main>
+  <SiteFooter />
+</Base>

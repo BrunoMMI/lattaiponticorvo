@@ -1,0 +1,56 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { eq } from 'drizzle-orm';
+import { getDb, schema } from '../../db';
+import { audit } from '../../lib/auth';
+import { CONTENT_FIELDS, contentAll, invalidateSettingsCache } from '../../lib/settings';
+
+export const prerender = false;
+const user = Astro.locals.user!;
+let flash = '', error = '';
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  try {
+    const db = await getDb();
+    // Prima si valida TUTTO, poi si scrive in una sola transazione: un errore non lascia modifiche a metà.
+    const entries = CONTENT_FIELDS.map((field) => {
+      const v = String(f.get(field.key) ?? '').trim().slice(0, field.max);
+      if (field.key === 'banner.link' && v && !/^(\/|https:\/\/)/.test(v)) throw new Error('Il link del banner deve iniziare con / oppure https://');
+      return { key: field.key as string, v };
+    });
+    await db.transaction(async (tx) => {
+      for (const { key, v } of entries) {
+        // vuoto = torna al testo predefinito (tranne il banner, dove vuoto significa "nascosto")
+        if (v === '' && !key.startsWith('banner')) await tx.delete(schema.siteContent).where(eq(schema.siteContent.key, key));
+        else await tx.insert(schema.siteContent).values({ key, value: v }).onConflictDoUpdate({ target: schema.siteContent.key, set: { value: v, updatedAt: new Date() } });
+      }
+    });
+    invalidateSettingsCache();
+    await audit(user.id, 'content.update');
+    flash = 'Contenuti salvati. Le modifiche sono visibili sul sito entro pochi secondi.';
+  } catch (e) { error = e instanceof Error ? e.message : 'Salvataggio non riuscito.'; }
+}
+
+const values = await contentAll();
+const groups = [...new Set(CONTENT_FIELDS.map((f) => f.group))];
+const field = 'min-h-11 w-full rounded-lg border border-line bg-white px-3 font-normal';
+---
+<Admin title="Contenuti del sito">
+  <h1 class="text-3xl mb-2">Contenuti del sito</h1>
+  <p class="text-ink-soft mb-6 max-w-2xl">Modifica i testi principali senza toccare il codice. Svuotando un campo (tranne il banner) si torna al testo originale.</p>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+  <form method="post" class="grid gap-6 max-w-3xl">
+    {groups.map((g) => (
+      <fieldset class="grid gap-4 rounded-[var(--radius-card)] bg-white p-5"><legend class="font-display text-xl px-1">{g}</legend>
+        {CONTENT_FIELDS.filter((f) => f.group === g).map((f) => (
+          <label class="grid gap-1 text-sm font-medium">{f.label}
+            {'area' in f ? <textarea class={field + ' py-2'} name={f.key} rows="3" maxlength={f.max}>{values[f.key]}</textarea> : <input class={field} name={f.key} value={values[f.key]} maxlength={f.max} />}
+            <span class="text-xs font-normal text-ink-soft">max {f.max} caratteri</span>
+          </label>))}
+      </fieldset>))}
+    <p class="text-sm text-ink-soft">Foto e video si sostituiscono dal progetto (cartella <code>uploads/site</code>); la gestione delle immagini dalla dashboard è prevista nella prossima fase.</p>
+    <button class="btn btn-primary justify-self-start">Salva</button>
+  </form>
+</Admin>

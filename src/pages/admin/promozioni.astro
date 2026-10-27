@@ -1,0 +1,89 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { asc, desc, eq } from 'drizzle-orm';
+import { audit } from '../../lib/auth';
+import { centsToInput, parseEuro } from '../../lib/format';
+
+export const prerender = false;
+const db = await getDb();
+const { coupons: C } = schema;
+const user = Astro.locals.user!;
+let flash = '', error = '';
+const txt = (f: FormData, k: string, max = 60) => String(f.get(k) ?? '').trim().slice(0, max);
+const date = (f: FormData, k: string, end = false) => { const v = txt(f, k, 10); return v ? new Date(`${v}T${end ? '23:59:59' : '00:00:00'}`) : null; };
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = txt(f, 'act', 10), id = txt(f, 'id', 40);
+  try {
+    if (act === 'create') {
+      const code = txt(f, 'code', 30).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+      if (code.length < 3) throw new Error('Il codice deve avere almeno 3 caratteri (lettere, numeri, - _).');
+      const pct = parseInt(txt(f, 'percent', 3), 10) || null;
+      const amount = parseEuro(f.get('amount'));
+      if ((pct ? 1 : 0) + (amount ? 1 : 0) !== 1) throw new Error('Indica una percentuale OPPURE un importo fisso.');
+      if (pct && (pct < 1 || pct > 100)) throw new Error('La percentuale deve essere tra 1 e 100.');
+      const from = date(f, 'from'), to = date(f, 'to', true);
+      if (from && to && to < from) throw new Error('La data di fine precede quella di inizio.');
+      const [c] = await db.insert(C).values({
+        code, percentOff: pct, amountOffCents: amount, categoryId: txt(f, 'category', 40) || null,
+        startsAt: from, endsAt: to, maxUses: parseInt(txt(f, 'max', 7), 10) || null,
+      }).returning().catch(() => { throw new Error('Esiste già un codice con questo nome.'); });
+      await audit(user.id, 'coupon.create', 'coupon', c.id, { code });
+      flash = `Codice ${code} creato.`;
+    } else if (act === 'toggle') {
+      const [c] = await db.select().from(C).where(eq(C.id, id));
+      if (c) await db.update(C).set({ active: !c.active }).where(eq(C.id, id));
+    } else if (act === 'delete') {
+      await db.delete(C).where(eq(C.id, id));
+      await audit(user.id, 'coupon.delete', 'coupon', id);
+    }
+  } catch (e) { error = e instanceof Error ? e.message : 'Operazione non riuscita.'; }
+}
+
+const list = await db.select().from(C).orderBy(desc(C.id));
+const cats = await db.select().from(schema.categories).where(eq(schema.categories.scope, 'shop')).orderBy(asc(schema.categories.name));
+const field = 'min-h-11 rounded-lg border border-line px-3 bg-white font-normal w-full';
+const lbl = 'grid gap-1 text-sm font-medium';
+const fmt = (d: Date | null) => (d ? d.toLocaleDateString('it-IT') : '—');
+---
+<Admin title="Promozioni">
+  <h1 class="text-3xl mb-6">Codici sconto</h1>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+
+  <section class="bg-white rounded-[var(--radius-card)] p-5 max-w-3xl mb-6">
+    <h2 class="text-xl mb-3">Nuovo codice</h2>
+    <form method="post" class="grid gap-3 sm:grid-cols-2">
+      <input type="hidden" name="act" value="create" />
+      <label class={lbl}>Codice<input class={field} name="code" required placeholder="es. BENVENUTO10" /></label>
+      <label class={lbl}>Solo per la categoria<select class={field} name="category"><option value="">Tutto il carrello</option>{cats.map((c) => <option value={c.id}>{c.name}</option>)}</select></label>
+      <label class={lbl}>Sconto percentuale (%)<input class={field} name="percent" type="number" min="1" max="100" /></label>
+      <label class={lbl}>…oppure importo fisso (€)<input class={field} name="amount" inputmode="decimal" /></label>
+      <label class={lbl}>Valido dal<input class={field} name="from" type="date" /></label>
+      <label class={lbl}>Valido fino al<input class={field} name="to" type="date" /></label>
+      <label class={lbl}>Utilizzi massimi (vuoto = illimitati)<input class={field} name="max" type="number" min="1" /></label>
+      <button class="btn btn-primary self-end justify-self-start">Crea codice</button>
+    </form>
+  </section>
+
+  {list.length === 0 ? <p class="text-ink-soft">Nessun codice sconto.</p> : (
+    <div class="bg-white rounded-[var(--radius-card)] overflow-x-auto max-w-4xl">
+      <table class="w-full text-sm"><caption class="sr-only">Codici sconto</caption>
+        <thead class="text-left text-ink-soft"><tr><th scope="col" class="p-3">Codice</th><th scope="col" class="p-3">Sconto</th><th scope="col" class="p-3">Validità</th><th scope="col" class="p-3">Usi</th><th scope="col" class="p-3">Stato</th><th scope="col" class="p-3"><span class="sr-only">Azioni</span></th></tr></thead>
+        <tbody>{list.map((c) => (
+          <tr class="border-t border-line">
+            <td class="p-3 font-mono">{c.code}</td>
+            <td class="p-3">{c.percentOff ? `${c.percentOff}%` : `${centsToInput(c.amountOffCents)} €`}{c.categoryId ? ` · ${cats.find((x) => x.id === c.categoryId)?.name ?? 'categoria'}` : ''}</td>
+            <td class="p-3">{fmt(c.startsAt)} → {fmt(c.endsAt)}</td>
+            <td class="p-3">{c.usedCount}{c.maxUses ? ` / ${c.maxUses}` : ''}</td>
+            <td class="p-3">{c.active ? 'Attivo' : 'Disattivato'}</td>
+            <td class="p-3"><form method="post" class="flex gap-3"><input type="hidden" name="id" value={c.id} />
+              <button class="underline" name="act" value="toggle">{c.active ? 'Disattiva' : 'Attiva'}</button>
+              <button class="underline text-bordeaux-700" name="act" value="delete">Elimina</button></form></td>
+          </tr>))}</tbody>
+      </table>
+    </div>
+  )}
+</Admin>

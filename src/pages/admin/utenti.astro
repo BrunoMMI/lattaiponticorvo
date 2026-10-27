@@ -1,0 +1,77 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { getDb, schema } from '../../db';
+import { asc, eq, sql } from 'drizzle-orm';
+import { audit, hashPassword, passwordProblem } from '../../lib/auth';
+
+export const prerender = false;
+const me = Astro.locals.user!;
+if (me.role !== 'owner') return new Response('Solo il titolare può gestire gli utenti.', { status: 403 });
+const db = await getDb();
+const { users: U } = schema;
+let flash = '', error = '';
+const txt = (f: FormData, k: string, max = 160) => String(f.get(k) ?? '').trim().slice(0, max);
+
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const act = txt(f, 'act', 12), id = txt(f, 'id', 40);
+  try {
+    if (act === 'create') {
+      const email = txt(f, 'email').toLowerCase(), name = txt(f, 'name'), pw = txt(f, 'password', 200);
+      const role = ['manager', 'staff'].includes(txt(f, 'role', 10)) ? (txt(f, 'role', 10) as 'manager' | 'staff') : 'staff';
+      if (!/^\S+@\S+\.\S+$/.test(email) || !name) throw new Error('Nome o email non validi.');
+      if (passwordProblem(pw)) throw new Error(passwordProblem(pw)!);
+      const [dup] = await db.select({ id: U.id }).from(U).where(eq(sql`lower(${U.email})`, email));
+      if (dup) throw new Error('Esiste già un utente con questa email.');
+      const [u] = await db.insert(U).values({ email, name, role, passwordHash: await hashPassword(pw) }).returning();
+      await audit(me.id, 'user.create', 'user', u.id, { role });
+      flash = `Utente ${email} creato. Comunicagli la password in modo sicuro e chiedigli di attivare la 2FA.`;
+    } else if (act === 'delete') {
+      if (id === me.id) throw new Error('Non puoi eliminare il tuo stesso account.');
+      const [t] = await db.select().from(U).where(eq(U.id, id));
+      if (!t) throw new Error('Utente non trovato.');
+      if (t.role === 'owner') throw new Error('Il titolare non può essere eliminato da qui.');
+      await db.delete(U).where(eq(U.id, id)); // le sessioni cadono a cascata
+      await audit(me.id, 'user.delete', 'user', id);
+      flash = 'Utente eliminato.';
+    } else if (act === 'role') {
+      const role = txt(f, 'role', 10);
+      if (id === me.id || !['manager', 'staff'].includes(role)) throw new Error('Modifica non consentita.');
+      await db.update(U).set({ role: role as 'manager' | 'staff' }).where(eq(U.id, id));
+      await audit(me.id, 'user.role', 'user', id, { role });
+    }
+  } catch (e) { error = e instanceof Error ? e.message : 'Operazione non riuscita.'; }
+}
+
+const list = await db.select().from(U).orderBy(asc(U.createdAt));
+const field = 'min-h-11 w-full rounded-lg border border-line bg-white px-3 font-normal';
+const lbl = 'grid gap-1 text-sm font-medium';
+const roleLabel = { owner: 'Titolare', manager: 'Gestore', staff: 'Collaboratore' } as const;
+---
+<Admin title="Utenti">
+  <h1 class="text-3xl mb-6">Utenti amministratori</h1>
+  {flash && <p role="status" class="bg-green-50 text-green-800 rounded-lg p-3 mb-4">{flash}</p>}
+  {error && <p role="alert" class="bg-bordeaux-50 text-bordeaux-700 rounded-lg p-3 mb-4">{error}</p>}
+  <div class="bg-white rounded-[var(--radius-card)] overflow-x-auto max-w-3xl mb-6">
+    <table class="w-full text-sm"><caption class="sr-only">Utenti</caption>
+      <thead class="text-left text-ink-soft"><tr><th scope="col" class="p-3">Utente</th><th scope="col" class="p-3">Ruolo</th><th scope="col" class="p-3">2FA</th><th scope="col" class="p-3"><span class="sr-only">Azioni</span></th></tr></thead>
+      <tbody>{list.map((u) => (
+        <tr class="border-t border-line"><td class="p-3">{u.name}<div class="text-xs text-ink-soft">{u.email}</div></td>
+          <td class="p-3">{u.role === 'owner' || u.id === me.id ? roleLabel[u.role] : (
+            <form method="post" class="flex gap-1"><input type="hidden" name="act" value="role" /><input type="hidden" name="id" value={u.id} />
+              <label class="sr-only" for={`r${u.id}`}>Ruolo</label><select id={`r${u.id}`} name="role" class="min-h-9 rounded border border-line px-2"><option value="manager" selected={u.role === 'manager'}>Gestore</option><option value="staff" selected={u.role === 'staff'}>Collaboratore</option></select>
+              <button class="underline">Salva</button></form>)}</td>
+          <td class="p-3">{u.totpEnabled ? 'Attiva' : '—'}</td>
+          <td class="p-3">{u.role !== 'owner' && u.id !== me.id && <form method="post"><input type="hidden" name="act" value="delete" /><input type="hidden" name="id" value={u.id} /><button class="underline text-bordeaux-700">Elimina</button></form>}</td></tr>))}</tbody>
+    </table>
+  </div>
+  <form method="post" class="grid gap-3 max-w-3xl rounded-[var(--radius-card)] bg-white p-5 sm:grid-cols-2">
+    <input type="hidden" name="act" value="create" /><h2 class="font-display text-xl sm:col-span-2">Nuovo utente</h2>
+    <label class={lbl}>Nome<input class={field} name="name" required /></label>
+    <label class={lbl}>Email<input class={field} type="email" name="email" required autocomplete="off" /></label>
+    <label class={lbl}>Password iniziale (min. 12, maiuscole, minuscole, numeri)<input class={field} type="password" name="password" required minlength="12" autocomplete="new-password" /></label>
+    <label class={lbl}>Ruolo<select class={field} name="role"><option value="manager">Gestore (ordini, prodotti, contenuti)</option><option value="staff">Collaboratore (sola operatività)</option></select></label>
+    <button class="btn btn-primary justify-self-start">Crea utente</button>
+  </form>
+  <p class="mt-4 max-w-3xl text-xs text-ink-soft">I collaboratori non accedono a utenti e impostazioni. Il controllo dei permessi avviene sul server.</p>
+</Admin>
