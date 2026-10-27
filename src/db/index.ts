@@ -1,4 +1,5 @@
 import * as schema from './schema';
+import { pgConfig } from './pg-config';
 
 /**
  * Sviluppo (DATABASE_URL vuoto): PGlite, un vero Postgres in-process salvato in ./.data/pg.
@@ -9,7 +10,7 @@ async function connect() {
   if (url) {
     const { default: pg } = await import('pg');
     const { drizzle } = await import('drizzle-orm/node-postgres');
-    return drizzle(new pg.Pool({ connectionString: url }), { schema });
+    return drizzle(new pg.Pool(pgConfig(url)), { schema });
   }
   (await import('node:fs')).mkdirSync('./.data', { recursive: true });
   const { PGlite } = await import('@electric-sql/pglite');

@@ -6,9 +6,10 @@ import { drizzle as dPglite } from 'drizzle-orm/pglite';
 import { drizzle as dPg } from 'drizzle-orm/node-postgres';
 import { PGlite } from '@electric-sql/pglite';
 import pg from 'pg';
+import { pgConfig } from '../src/db/pg-config.ts';
 
 const url = process.env.DATABASE_URL;
-if (url) await migratePg(dPg(new pg.Pool({ connectionString: url })), { migrationsFolder: './drizzle' });
+if (url) await migratePg(dPg(new pg.Pool(pgConfig(url))), { migrationsFolder: './drizzle' });
 else await migratePglite(dPglite(new PGlite(process.env.PGLITE_DIR || './.data/pg')), { migrationsFolder: './drizzle' });
 console.log('Migrazioni applicate.');
 process.exit(0);

@@ -26,3 +26,7 @@ pnpm-debug.log*
 .data/
 .env
 
+
+# foto copiate da uploads/ al momento del build (vedi scripts/copy-uploads.mjs)
+public/media/
+.vercel/
